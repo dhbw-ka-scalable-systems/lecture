@@ -1,0 +1,7 @@
+build/**/*.pdf
+tex2pdf*/
+*.zip
+plantuml-images/
+*.drawio.bkp
+*.drawio.dtmp
+.DS_Store
