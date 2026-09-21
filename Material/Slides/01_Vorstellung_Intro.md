@@ -1,5 +1,5 @@
 ---
-title: "Skalierbare Systeme
+title: "Skalierbare Systeme"
 topic: "scalable_systems_1_1"
 author: "Lukas Panni & Silas Schnurr"
 theme: "metropolis"
