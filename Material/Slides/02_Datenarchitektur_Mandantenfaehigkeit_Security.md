@@ -31,10 +31,10 @@ Time plan: 4 VE = 180 min content, Friday 8:30-11:45 with a 15 min break on top.
 
 ## Heute
 
-- Vorstellung
-- Datenarchitektur: Replikation, Partitionierung, Konsistenz
-- Mandantenfähigkeit
-- System-Security
+- Datenarchitektur: Datenmodell, Transaktionen, Replikation und Partitionierung
+- Mandantenfähigkeit: Isolation ist eine Architekturentscheidung
+- System-Security: Grenzen, Identitäten und Schutzschichten
+- Durchgängiges Beispiel: Cal.diy, erweitert zum Mandanten-Teaching-Model
 - AI Engineering: Daten und Sicherheit für KI-Systeme
 
 ## Vorstellung
@@ -231,45 +231,111 @@ WHERE status = 'CONFIRMED';
 
 # Mandantenfähigkeit
 
-## Begriff und Motivation
+## Was ist ein Mandant?
 
-- Multi-Tenancy: eine Installation, viele Kunden (Mandanten)
-- Motivation: SaaS, Kosten, zentraler Betrieb, schnelle Auslieferung
-- Anforderungen: Isolation, Anpassbarkeit, Kosten pro Mandant, Compliance
+- engl. "tenant" -> "Multi-Tenancy"
+- organisatorisch abgegrenzte Kundengruppe in einem gemeinsamen Produkt
+- eigene Daten, Einstellungen, Benutzer und Berechtigungen
 
-## Mandantenmodelle
+## Multi-Tenancy - Definition + Motivation
 
-- Silo: eigene Datenbank (oder Instanz) pro Mandant
-- Pool: gemeinsames Schema, `tenant_id` in jeder Tabelle
-- Bridge: gemeinsame Datenbank, eigenes Schema pro Mandant
-- Vergleich: Isolation, Kosten, Betrieb, Skalierung, Migration
+> Ein System bedient mehrere Mandanten gleichzeitig, wobei die Daten und Aktionen der Mandanten logisch getrennt bleiben.
 
-## Datenisolation im Pool-Modell
+- Ökonomischere Ressourcennutzung, spart Betriebskosten
+- Zentrale Weiterentwicklung
+- Skalierbarer Betrieb
 
-- Jede Abfrage filtert nach Mandant: fehleranfällig
-- Row-Level Security in der Datenbank
-- Verschlüsselung pro Mandant, Schlüsselverwaltung
-- Backup und Restore für einen einzelnen Mandanten
+## Von Single-Tenancy zu Multi-Tenancy (1)
 
-## Mandantenkontext durch das System tragen
+- Viele Anwendungen starten nicht mit Multi-Tenancy als Anforderung
+  - Siehe Cal.diy Beispiel
+  - Was fehlt uns für Multi-Tenancy? (Ziel: Untersützung für mehrere Organisationen)
 
-- Woher kommt der Mandant: Subdomain, Header, Token-Claim
-- Middleware setzt den Kontext, Datenzugriff erzwingt ihn
-- Hintergrundjobs und Queues: Kontext mitgeben
-- Logging und Metriken pro Mandant
+## Von Single-Tenancy zu Multi-Tenancy (2)
 
-## Noisy Neighbours und Fairness
+- Anpassungen im Datenmodell: Alle Daten müssen einem Mandanten (einer Organisation) zugeordnet werden
+- Anpassungen in der Anwendungslogik:
+  - Alle Use-Cases müssen den aktuellen Mandantenkontext berücksichtigen
+  - Neue Use-Cases für Mandantenübergreifende Operationen: z.B. Reporting, Administration
 
-- Ein Mandant frisst die Ressourcen der anderen
-- Gegenmaßnahmen: Rate Limits pro Mandant, Quotas, Prioritäten, Bulkheads
-- Große Mandanten in eigene Silos heben (Silo-Promotion)
-- Sharding nach Mandant als natürliche Partitionierung
+## Drei Modelle für Datenisolation
 
-## Beispiel: Mandantenfähiges Datenmodell
+| Modell | Datenablage                      | Isolation |          Betrieb |
+| ------ | -------------------------------- | --------: | ---------------: |
+| Pool   | gemeinsame Tabellen, `tenant_id` |   logisch |          einfach |
+| Bridge | eigenes Schema pro Mandant       |   stärker | mehr Migrationen |
+| Silo   | eigene Datenbank oder Instanz    |     stark |        aufwendig |
 
-- Fallstudie: SaaS für Zeiterfassung mit Kunden von 5 bis 50.000 Mitarbeitenden
-- Gemeinsam durchspielen: Mandantenmodell wählen und begründen, Datenmodell skizzieren
-- Was passiert beim Onboarding eines Großkunden?
+Kein Modell gewinnt immer: Compliance, Größe, Kosten und Betrieb entscheiden.
+
+## Silo: höchste Isolation, aufwendig im Betrieb
+
+- Einfachste Lösung: jeder Mandant bekommt eine eigene Instanz (Datenbank oder Anwendung)
+- Stärkste mögliche Isolation
+- Hoher Verwaltungsaufwand für Betrieb und Updates
+- Kaum gemeinsame Infrastrukturnutzung, keine Skaleneffekte
+- Schlecht für Mandantenübergreifende Operationen: Administration, Observability
+
+## Pool: einfach umzusetzen, aber mit Risiken
+
+```text
+booking(id, organization_id, host_id, start_time, status)
+```
+
+- einfach umzusetzen
+- jede relevante Abfrage ist mandantengebunden
+- ein vergessener Filter wird zum Datenleck, Fehler haben große Auswirkungen
+- gemeinsame Infrastruktur: kostengünstig, Last aber auch geteilt -> _Noisy Neighbours_
+
+## Bridge: mittlere Isolation, mittlerer Aufwand
+
+- eigenes Schema pro Mandant, aber gleiche Datenbank(instanz)
+- relativ starke technische Trennung auf Datenbankebene
+- Migrationen zwischen Mandanten sind aufwendiger als im Pool-Modell
+
+Auch hybride Ansätze sind verbreitet. Häufig auch Pool für Standard-Mandanten und eigene Instanzen für regulierte oder besonders große Kunden.
+
+## Tenant Context
+
+> Wie lässt sich in der Anwendung sicherstellen, dass jeder Zugriff auf die Daten eines Mandanten korrekt beschränkt ist?
+
+- Tenant Context = Identität des aktuellen Mandanten + notwendige Daten für die Anwendung (z.B. Rollen)
+- Context wird im gesamten Request Lifecycle beibehalten und weitergereicht
+  - Bei verteilten Systemen z.B. über JWTs
+- Datenzugriffe beziehen sich auf den Tenant Context, Datenzugriffslayer erzwingt Tenant-Filter
+  - Umsetzung z.B. über Repository-Pattern oder ORM-Level-Filter
+
+## Datenzugriff: Defense in Depth
+
+- Datenbank-Features können den Mandantenfilter erzwingen, z.B. über Row-Level Security (RLS) in PostgreSQL
+  - Jeder Datensatz einer Relation (=Row) gehört zu genau einem Tenant
+  - RLS-Policy stellt Zugriff nur auf die Daten des jeweiligen Tenants sicher
+- Tenant Context trotzdem wichtig: Datenbankverbindung muss auf den aktuellen Tenant konfiguriert werden
+- Defense in Depth: kein Ersatz für Anwendungsautorisierung
+
+## Noisy Neighbour
+
+> Ein Mandant verbraucht übermäßig viele gemeinsame Ressourcen und schränkt andere dadurch ein.
+
+- z.B. großer Export, sehr viele gleichzeitige Anfragen
+
+Gegenmaßnahmen:
+
+- Rate Limits und Quotas pro Mandant
+- Queues und Pools begrenzen den Blast Radius
+- Anspruchsvolle Kunden in ein Silo verschieben
+
+## Aufgabe: Auswahl passendes Mandantenmodell
+
+**Arbeitszeit: 5 Minuten, 3er Gruppen**
+
+Fälle:
+
+1. 50 kleine Organisationen
+2. 10.000 kleine Organisationen mit stark unterschiedlicher Last
+3. 20 regulierte Großkunden mit Restore-Anforderung pro Kunde
+
+Bewertet _Isolation_, _Kosten_, _Betrieb_, _Skalierung_ für die verschiedenen Modelle für einen der Fälle 1-3.
 
 # System-Security
 
