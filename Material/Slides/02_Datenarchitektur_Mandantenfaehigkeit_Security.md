@@ -48,69 +48,186 @@ Time plan: 4 VE = 180 min content, Friday 8:30-11:45 with a 15 min break on top.
 
 # Datenarchitektur
 
-## Lernziele
+## Datenarchitektur - Grundlagen (1)
 
-- Replikation und Partitionierung erklären und ihre Trade-offs benennen
-- Konsistenzmodelle einordnen und für einen Anwendungsfall auswählen
-- Mandantenmodelle vergleichen und ein mandantenfähiges Datenmodell entwerfen
-- Sicherheit als Architekturthema behandeln: Bedrohungen modellieren, Vertrauensgrenzen ziehen
+Wikipedia:
 
-## Datenmodelle: Wiederholung und Einordnung
+> Datenarchitektur ist eine Teildisziplin der IT-Architektur, die sich mit grundlegenden Strukturen und Prinzipien zu Daten und Informationen, ihrer Konstruktion, Nutzung und Weiterentwicklung befasst.
 
-- Relational, Dokument, Key-Value, Wide-Column, Graph, Zeitreihen, Suche
-- Polyglot Persistence: das passende Modell pro Zugriffsmuster
-- Zugriffsmuster vor Datenmodell: Wie wird gelesen und geschrieben?
-- Zugriff aus der Anwendung (Fowler): Repository, Data Mapper, Unit of Work
-- OLTP vs. OLAP: Transaktionen vs. Analysen; Data Warehouse und Data Lake kurz
+## Datenarchitektur - Grundlagen (2)
 
-## Replikation (1): Warum und wie
+- Welche Daten gibt es, wie sind die Beziehungen zwischen ihnen?
+- Wem gehören die Daten, wer steuert den Zugriff?
+- Wer liest und schreibt wann, wie oft und mit welchen weiteren Anforderungen?
+- Wo werden Daten gespeichert, wie lange und mit welchen Anforderungen an Verfügbarkeit und Konsistenz?
 
-- Ziele: Verfügbarkeit, Leselast verteilen, Latenz durch Nähe
-- Leader-Follower (Single Leader): Schreiben zentral, Lesen verteilt
-- Multi-Leader: mehrere Rechenzentren, Konfliktauflösung nötig
-- Leaderless (Dynamo-Stil): Quorum beim Lesen und Schreiben
+## Vom Anwendungsfall zum Datenmodell - Use-Case Terminbuchung (1)
 
-## Replikation (2): Probleme
+1. Gast öffnet eine Buchungsseite
+2. System zeigt freie Zeiten
+3. Gast wählt einen Zeitslot
+4. System legt eine Buchung an
+5. Externer Kalender wird aktualisiert (z.B. via Webhook)
+6. Bestätigung wird versendet
 
-- Synchron vs. asynchron: Dauerhaftigkeit gegen Latenz
-- Replication Lag und seine Folgen: Read-your-writes, Monotonic Reads, Consistent Prefix
-- Failover: Datenverlust, Split Brain, Timeouts
-- Praxis: Postgres Streaming Replication, MySQL, MongoDB Replica Sets
+## Vom Anwendungsfall zum Datenmodell - Use-Case Terminbuchung (2)
 
-## Partitionierung (Sharding) (1)
+- Welche Informationen werden benötigt?
+- Wer greift zu? lesend? schreibend?
+- Zugriffshäufigkeiten?
+- Anforderungen an Konsistenz? Transaktionen?
 
-- Ziel: Datenmenge und Schreiblast über Knoten verteilen
-- Strategien: nach Schlüsselbereich, nach Hash, zusammengesetzt
-- Hot Spots: schiefe Verteilung, prominente Schlüssel
-- Sekundärindizes: lokal (Scatter/Gather) vs. global
+## Datenmodell: drei Ebenen
 
-## Partitionierung (Sharding) (2)
+1. **Konzeptuell:** Modellierung der Realität. Daten und ihre Beziehungen.
+2. **Logisch:** Wie bildet das gewählte DBMS diese Dinge ab?
+3. **Physisch:** Wie werden sie technisch gespeichert und schnell erreichbar gemacht?
 
-- Rebalancing: Partitionen verschieben, ohne den Betrieb zu stören
-- Request Routing: Wer weiß, wo welcher Schlüssel liegt?
-- Partitionierung und Joins: Was nicht mehr geht; Denormalisierung und Materialized Views als Ausweg
-- Praxis: Citus, Vitess, MongoDB, DynamoDB, Cassandra
+Entspricht strukturiertem Vorgehen: erst Daten erfassen + modellieren, dann Entscheidung für Datenbanksystem treffen, dann technische Details festlegen.
 
-## Konsistenz (1): Begriffe
+## Konzeptuelles Datenmodell: Cal.diy
 
-- ACID vs. BASE
-- Isolation Levels: Read Committed, Snapshot Isolation, Serializable
-- Konsistenzmodelle verteilter Systeme: Linearisierbarkeit, sequenziell, kausal, eventual
-- Nebenläufigkeit in der Anwendung: Optimistic und Pessimistic Offline Lock (Fowler)
-- Was "Konsistenz" in ACID und in CAP jeweils bedeutet
+```plantuml
+@startuml
+hide circle
+skinparam linetype ortho
+entity User
+entity EventType
+entity Availability
+entity Booking
 
-## Konsistenz (2): CAP und darüber hinaus
+User ||--o{ EventType
+User ||--o{ Availability
+EventType ||--o{ Booking
+User ||--o{ Booking : host
+@enduml
+```
 
-- CAP-Theorem: bei Netzwerkpartition zwischen Konsistenz und Verfügbarkeit wählen
-- Kritik: Partitionen sind selten, Latenz ist immer da \rightarrow{} PACELC
-- In der Praxis: pro Datensatz und Operation entscheiden, nicht pro System
-- Beispiele: Kontostand vs. Like-Zähler
+## Logisches Datenmodell: relational
 
-## Verteilte Transaktionen
+- Relational: Daten liegen in **Relationen** (Tabellen)
+- Jede Relation ist eine Menge von **Tupeln** (Datensätzen) desselben Typs
+- Beziehungen werden etwa über Fremdschlüssel abgebildet; Constraints machen Regeln prüfbar
+- Für Buchungen mit Beziehungen und Transaktionen ist das ein guter Start
 
-- Two-Phase Commit: Funktionsweise, Koordinator als Schwachstelle
-- Saga-Pattern: lokale Transaktionen mit kompensierenden Aktionen (Vertiefung in Vorlesung 5)
-- Outbox-Pattern und Idempotenz als Voraussetzung (Vertiefung in Vorlesung 4)
+## Logische Datenmodelle: weitere Optionen "NoSQL"
+
+- Dokumentenorientiert: zusammengehörige Daten als Dokument; flexibel, gut für Aggregate
+- Key-Value Store: Schlüssel führt direkt zu einem Wert; gut für Cache oder Sessions
+- Graphdatenbank: Knoten und Kanten, gut für viele Beziehungsabfragen
+- Objektorientierte Datenbank: persistiert Objekte direkt; heute eher Nische
+
+## Logisches Datenmodell: Auswahl
+
+- Kein perfektes System für alle Anwendungsfälle
+- Alle Arten haben Vor- und Nachteile
+- Entscheidung sollte von Zugriffsmustern und Domänenregeln abhängen
+  - Anforderungen an Konsistenz
+  - Zugriffshäufigkeiten
+  - Art der Beziehungen
+- Für viele Anwendungen ist eine relationale Datenbank ein guter Startpunkt, erweitern bei Bedarf
+
+## Zugriffsmuster im Beispiel
+
+Typische Abfragen:
+
+- Freie Slots einer Terminart anzeigen
+- Eine eindeutige Buchung laden
+- Buchungen auflisten
+- Kollision mit bestehender Buchung prüfen
+- Externe Services abfragen oder aktualisieren
+
+## Physisches Datenmodell
+
+- Ergänzt das logische Modell um technische Details der Speicherung und Zugriffsoptimierung
+- Beispiele: Indexstrukturen, Partitionierung, Replikation, Speicherformat und Query-Pläne
+  - z.B. für schnelle Abfragen auf freie Slots, Constraints für Konsistenz und Einhaltung logischer Regeln
+- Datenbanknutzer sehen diese Details meist nicht; die Latenz und Kosten aber schon
+
+## Polyglot Persistence
+
+- Ein System nutzt bewusst mehrere Speichermodelle für verschiedene Aufgaben
+  - z.B. wenn ein relationales Modell nicht alle Anforderungen erfüllt
+  - Beispiel: PostgreSQL für Buchungen, Key-Value für Sessions, Suchindex für Volltext
+- Jedes zusätzliche System kostet Betrieb, Konsistenzarbeit und Wissen
+- Deshalb: erst ein passendes System, weitere nur bei messbarem Bedarf
+
+## Wiederholung Transaktionen (1)
+
+> Folge von Operationen, die als logische Einheit betrachtet werden und entweder vollständig ausgeführt oder vollständig zurückgesetzt werden.
+
+## Transaktionen bei Buchungen
+
+1. Slot prüfen
+2. Buchung anlegen
+3. Status und Teilnehmer speichern
+
+Nicht Teil derselben Datenbanktransaktion:
+
+- externer Kalender
+- E-Mail-Versand
+- Webhooks
+
+## Wiederholung Transaktionen (2) ACID
+
+- **Atomicity:** ganz oder gar nicht
+- **Consistency:** Datenregeln bleiben erfüllt
+- **Isolation:** parallele Transaktionen sehen keinen unkontrollierten Zwischenstand
+- **Durability:** bestätigte Daten bleiben gespeichert
+
+## Think-Pair-Share: Doppelbuchung
+
+**Arbeitszeit: 6 Minuten — 2 allein, 2 zu zweit, 2 im Plenum**
+
+Zwei Requests prüfen "gleichzeitig" denselben freien Slot und wollen beide buchen.
+
+1. Wo genau ist die Race Condition?
+2. Welche Regel muss unabhängig vom Anwendungscode gelten?
+3. Was darf bei der zweiten Anfrage passieren?
+
+## Doppelbuchung Ergebnis (1)
+
+![Doppelbuchung Fehler](media/doppelbuchung-fehler.png)
+
+## Lösung mit Transaktionen? (1)
+
+Warum lösen Transaktionen das Problem der Doppelbuchung nicht garantiert?
+
+## Lösung mit Transaktionen? (2)
+
+- Beide Requests müssen entweder komplett ausgeführt oder komplett zurückgesetzt werden
+- Annahme: Isolation Level Read Commited o.ä.
+  - Solange bei Start beider Transaktionen der Slot noch frei ist können beide ohne Verletzung von Konsistenzregeln schreiben!
+- Lösungsmöglichkeit: Höheres Isolationslevel, _aber_ Performance kann leiden
+
+## Alternative Lösung: Unique Constraint (1)
+
+- z.B. Unique Index auf `room_id` und `start_time` für bestätigte Buchungen
+  - Reicht noch nicht aus für flexible Zeitintervalle, die überlappen können
+
+```sql
+-- Für feste Slots, etwa immer 30 Minuten:
+CREATE UNIQUE INDEX booking_one_per_fixed_slot
+ON booking (room_id, start_time)
+WHERE status = 'CONFIRMED';
+```
+
+- Beispiel für Teil des physischen Datenmodells, reines Implementierungsdetail
+
+## Alternative Lösung: Unique Constraint (2)
+
+-![Doppelbuchung Unique Index](media/doppelbuchung-unique-index.png)
+
+## Warum Konsistenzregeln in der Datenbank?
+
+- Invarianten im Datenmodell (z.B. nur eine bestätigte Buchung pro Raum und Zeit) sollte nah bei den Daten abgesichert werden
+  - Regeln die unabhängig vom Use-Case gelten sollen
+- Bei Umsetzung in Datenbank:
+  - Regeln gelten unabhängig über welchen Weg die Daten geändert werden (parallele Requests, Batch-Jobs, Admin-Tools, neue Code-Pfade ...)
+  - Einfach wartbar
+  - Schützt vor Inkonsistenzen bei parallelen Anfragen
+  
+
 
 # Mandantenfähigkeit
 
