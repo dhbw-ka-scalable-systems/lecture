@@ -196,7 +196,7 @@ Warum lösen Transaktionen das Problem der Doppelbuchung nicht garantiert?
 ## Lösung mit Transaktionen? (2)
 
 - Beide Requests müssen entweder komplett ausgeführt oder komplett zurückgesetzt werden
-- Annahme: Isolation Level Read Commited o.ä.
+- Annahme: Isolation Level Read Committed o. ä.
   - Solange bei Start beider Transaktionen der Slot noch frei ist können beide ohne Verletzung von Konsistenzregeln schreiben!
 - Lösungsmöglichkeit: Höheres Isolationslevel, _aber_ Performance kann leiden
 
@@ -226,8 +226,47 @@ WHERE status = 'CONFIRMED';
   - Regeln gelten unabhängig über welchen Weg die Daten geändert werden (parallele Requests, Batch-Jobs, Admin-Tools, neue Code-Pfade ...)
   - Einfach wartbar
   - Schützt vor Inkonsistenzen bei parallelen Anfragen
-  
 
+## Warum Daten verteilen?
+
+Bisher: Eine Datenbank speichert alle Buchungen und erzwingt ihre Regeln.
+
+- Leselast und Ausfälle: Replikation
+- Datenmenge und Schreiblast: Partitionierung
+- Externe Systeme: verteilte Transaktionen
+- Jede Maßnahme schafft neue Konsistenzfragen
+
+## Replikation: Kopien mit Verzögerung
+
+- Single Leader: einer schreibt, Replikate lesen
+- Ziele: Leselast, Ausfall, Nähe
+- Asynchron: schnell, aber mit Lag
+- Buchung gespeichert, Replica zeigt Slot noch frei
+- Multi-Leader/Leaderless: Konflikte oder Quoren
+
+## Partitionierung: Daten gezielt teilen
+
+- Replikation kopiert, Partitionierung verteilt
+- Range: Bereiche gut, Hot-Spot-Risiko
+- Hash: gleichmäßig, Bereiche aufwendig
+- Routing und Rebalancing gehören dazu
+- Später: `organization_id` als Partition-Key
+
+## Konsistenz nach der Verteilung
+
+- **Linearizable:** eine aktuelle Reihenfolge
+- **Eventual:** Kopien gleichen sich später an
+- CAP: bei Partition Verfügbarkeit oder lineare Konsistenz
+- BASE: verfügbarkeitsorientierte Denkweise, kein ACID-Gegenspieler
+- Buchung stark; Kalenderansicht und Report dürfen nachziehen
+
+## Verteilte Transaktionen: Buchung plus Kalender
+
+- Datenbank-Commit und Kalender-API sind nicht atomar
+- Two-Phase Commit: koordiniert, aber blockierend
+- Praxis: lokale Transaktion, Outbox, Worker
+- Idempotenz gegen doppelte Nebenwirkungen
+- Saga: fachlich kompensieren (Vertiefung Vorlesung 5)
 
 # Mandantenfähigkeit
 
