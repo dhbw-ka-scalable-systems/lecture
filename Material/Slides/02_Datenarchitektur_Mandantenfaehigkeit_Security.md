@@ -44,7 +44,25 @@ Time plan: 4 VE = 180 min content, Friday 8:30-11:45 with a 15 min break on top.
 <!-- TODO(Lu): bio and e-mail address -->
 
 - Per Du
-- E-Mail-Adresse: TODO
+- E-Mail-Adresse: <lukas.panni@outlook.de>
+- Seit 2018 bei SEW-EURODRIVE in Bruchsal
+  - 2023: _M.Sc._ Informatik - HKA
+  - 2021: _B.Sc._ Informatik - DHBW Karlsruhe
+
+## Lernziele
+
+- Datenmodell und Zugriffswege gemeinsam entwerfen
+- Replikation, Partitionierung und Konsistenz passend einordnen
+- drei grundlegende Mandantenmodelle vergleichen
+- Tenant-Isolation über den ganzen Request erzwingen
+- Bedrohungen an Vertrauensgrenzen finden und Schutzmaßnahmen ableiten
+
+## Unser reales Beispiel: Cal.com/Cal.diy
+
+- Community-getriebene, Open-Source Next.js basierte Terminplanungsplattform: [github.com/calcom/cal.diy](https://github.com/calcom/cal.diy)
+- Selbst gehostete Community-Edition von [Cal.com](https://cal.com)
+- Terminarten, Verfügbarkeiten und Buchungen
+- Integrationen mit externen Kalendern und Videodiensten
 
 # Datenarchitektur
 
