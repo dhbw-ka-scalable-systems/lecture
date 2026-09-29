@@ -112,6 +112,7 @@ skinparam linetype ortho
 entity User
 entity EventType
 entity Availability
+entity Room
 entity Booking
 
 User ||--o{ EventType
@@ -130,10 +131,10 @@ User ||--o{ Booking : host
 
 ## Logische Datenmodelle: weitere Optionen "NoSQL"
 
-- Dokumentenorientiert: zusammengehörige Daten als Dokument; flexibel, gut für Aggregate
-- Key-Value Store: Schlüssel führt direkt zu einem Wert; gut für Cache oder Sessions
-- Graphdatenbank: Knoten und Kanten, gut für viele Beziehungsabfragen
-- Objektorientierte Datenbank: persistiert Objekte direkt; heute eher Nische
+- **Dokumentenorientiert**: zusammengehörige Daten als Dokument; flexibel, gut für Aggregate
+- **Key-Value Store:** Schlüssel führt direkt zu einem Wert; gut für Cache oder Sessions
+- **Graphdatenbank:** Knoten und Kanten, gut für viele Beziehungsabfragen
+- **Objektorientierte Datenbank:** persistiert Objekte direkt; heute eher Nische
 
 ## Logisches Datenmodell: Auswahl
 
@@ -218,6 +219,19 @@ Warum lösen Transaktionen das Problem der Doppelbuchung nicht garantiert?
   - Solange bei Start beider Transaktionen der Slot noch frei ist können beide ohne Verletzung von Konsistenzregeln schreiben!
 - Lösungsmöglichkeit: Höheres Isolationslevel, _aber_ Performance kann leiden
 
+## Wiederholung: Isolation Levels
+
+Isolation bestimmt, welche Auswirkungen **parallel laufender Transaktionen** sichtbar werden.
+
+| Level                      | Zusage                                                                                                               |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Read Committed             | Transaktion kann nur bestätigte (commitete) Änderungen sehen; zwischen zwei Operationen kann sich der Stand ändern. |
+| Repeatable Read / Snapshot | Transaktion sieht nur Änderungen, die vor Start der Transaktion commitet wurden.                                    |
+| Serializable               | Transaktionen wirken als wären sie nacheinander ausgeführt worden, keine phantom reads möglich                       |
+
+- Höhere Isolation bedeutet mehr Koordination, mögliche Abbrüche und Retries
+- Details und konkrete Namen unterscheiden sich je nach DBMS
+
 ## Alternative Lösung: Unique Constraint (1)
 
 - z.B. Unique Index auf `room_id` und `start_time` für bestätigte Buchungen
@@ -234,7 +248,7 @@ WHERE status = 'CONFIRMED';
 
 ## Alternative Lösung: Unique Constraint (2)
 
--![Doppelbuchung Unique Index](media/doppelbuchung-unique-index.png)
+![Doppelbuchung Unique Index](media/doppelbuchung-unique-index.png)
 
 ## Warum Konsistenzregeln in der Datenbank?
 
@@ -247,46 +261,67 @@ WHERE status = 'CONFIRMED';
 
 ## Warum Daten verteilen?
 
-Bisher: Eine Datenbank speichert alle Buchungen und erzwingt ihre Regeln.
+Eine einzelne Datenbank kann an Grenzen stoßen:
 
-- Leselast und Ausfälle: Replikation
-- Datenmenge und Schreiblast: Partitionierung
-- Externe Systeme: verteilte Transaktionen
-- Jede Maßnahme schafft neue Konsistenzfragen
+- Viele gleichzeitige Zugriffe erhöhen Wartezeiten
+- Große Datenmengen übersteigen Speicher- oder Rechenkapazität
+- Weit entfernte Nutzer warten länger auf Antworten
+- Single Point of Failure
 
-## Replikation: Kopien mit Verzögerung
+## Replikation (1)
 
-- Single Leader: einer schreibt, Replikate lesen
-- Ziele: Leselast, Ausfall, Nähe
-- Asynchron: schnell, aber mit Lag
-- Buchung gespeichert, Replica zeigt Slot noch frei
-- Multi-Leader/Leaderless: Konflikte oder Quoren
+> **Replikation**: Dieselben Daten verteilt auf mehrere Server.
 
-## Partitionierung: Daten gezielt teilen
+- Löst Probleme mit Single Point of Failure und Latenzen
+- Keine Lösung für große Datenmengen -> gleiche Daten müssen auf allen Servern vorgehalten werden
+- Neues Problem: Konsistenz bei parallelen Schreibzugriffen auf verschiedene Server
 
-- Replikation kopiert, Partitionierung verteilt
-- Range: Bereiche gut, Hot-Spot-Risiko
-- Hash: gleichmäßig, Bereiche aufwendig
-- Routing und Rebalancing gehören dazu
-- Später: `organization_id` als Partition-Key
+## Replikation (2)
 
-## Konsistenz nach der Verteilung
+- **Starke Konsistenz:** Nach bestätigtem Schreiben liefert eine Leseanfrage den neuen Stand oder schlägt fehl
+- **Eventual Consistency:** Eine Leseanfrage kann zunächst noch den alten Stand liefern, später gleichen sich die Kopien an
+- **CAP** = Consistency, Availability, Partition Tolerance (ein verteiltes System kann immer nur zwei der drei Eigenschaften gleichzeitig erfüllen)
+  - Bei Netzwerkunterbrechung zwischen Konsistenz und Verfügbarkeit wählen
 
-- **Linearizable:** eine aktuelle Reihenfolge
-- **Eventual:** Kopien gleichen sich später an
-- CAP: bei Partition Verfügbarkeit oder lineare Konsistenz
-- BASE: verfügbarkeitsorientierte Denkweise, kein ACID-Gegenspieler
-- Buchung stark; Kalenderansicht und Report dürfen nachziehen
+## Replikation (3)
 
-## Verteilte Transaktionen: Buchung plus Kalender
+- **Leader-Follower Modell**
+  - Ein Server ist der Leader, alle anderen sind Follower
+  - Schreibzugriffe gehen an den Leader, Lesezugriffe sind bei allen möglich
+  - Aktualisierungen werden vom Leader an die Follower weitergegeben
+    - synchron oder asynchron möglich
+    - bei asynchroner Replikation nur eventual consistency
+- Anpassung: Multi-Leader
+- Komplexer: Leaderless mit Quoren
 
-- Datenbank-Commit und Kalender-API sind nicht atomar
-- Two-Phase Commit: koordiniert, aber blockierend
-- Praxis: lokale Transaktion, Outbox, Worker
-- Idempotenz gegen doppelte Nebenwirkungen
-- Saga: fachlich kompensieren (Vertiefung Vorlesung 5)
+## Partitionierung / Sharding
+
+> **Sharding / Partitionierung**: Die Daten werden auf mehrere Server verteilt, sodass jeder Server nur einen Teil der Daten hält.
+
+- Vorteile
+  - Reduziert die Datenmenge pro Server
+  - Parallele Schreib- und Lesezugriffe ohne zusätzliche Koordination
+  - bei Geografischer Verteilung oft gut: z.B. deutsche User nutzen häufig deutsche Daten, andere weniger häufig
+
+## Sharding Umsetzung
+
+- Shard Key: Alle Daten eines bestimmten Schlüssels liegen auf demselben Shard
+  - z.B. user_id -> Daten werden nach User-ID aufgeteilt: gleiche user_id = gleicher Shard
+- Zentraler Koordinator / Router mit Kenntnis der Shard-Zuordnung notwendig
+  - kann selbst wiederum repliziert sein
+- Technische Umsetzung
+  - **Range Sharding**: Aufteilung nach Wertebereich
+    - Beispiel: user_id 1-1000 auf Shard 1, 1001-2000 auf Shard 2
+    - Hotspot Risiko größer
+  - **Hash Sharding**: Aufteilung nach Hashwert des Shard Keys
+    - Ziel: gleichmäßige Verteilung der Daten auf die Shards
+    - Schlecht wenn häufig ganze Wertebereiche abgefragt werden
 
 # Mandantenfähigkeit
+
+## Ausgangssituation
+
+![Ausgangssituation](media/Ausganssituation_non_SaaS.pdf)
 
 ## Was ist ein Mandant?
 
@@ -351,6 +386,14 @@ booking(id, organization_id, host_id, start_time, status)
 - Migrationen zwischen Mandanten sind aufwendiger als im Pool-Modell
 
 Auch hybride Ansätze sind verbreitet. Häufig auch Pool für Standard-Mandanten und eigene Instanzen für regulierte oder besonders große Kunden.
+
+## Bridge
+
+![Bridge](media/Bridge.pdf)
+
+## Hybrid
+
+![Hybrid](media/Pool_+_Silo_hybrid.pdf)
 
 ## Tenant Context
 
