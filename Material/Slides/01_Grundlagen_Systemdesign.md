@@ -294,6 +294,71 @@ Nach Jeff Dean und [Colin Scott](https://colin-scott.github.io/personal_website/
   - nicht alle Einsatzzwecke, nicht alle Vor- und Nachteile, nicht alle Alternativen
 - Hilfe um zu verstehen, welches Problem ein Baustein löst und welches er neu schafft
 
+## Landkarte: Bausteine in einem Webshop
+
+```{.plantuml height=85%}
+@startuml
+left to right direction
+skinparam shadowing false
+skinparam defaultFontSize 20
+skinparam ArrowFontSize 18
+skinparam nodesep 18
+skinparam ranksep 45
+skinparam legendFontSize 18
+actor "Browser" as web
+actor "App" as app
+actor "Partner" as partner
+cloud "DNS" as dns
+cloud "CDN" as cdn
+rectangle "API Gateway" as gw
+rectangle "Load Balancer" as lb
+collections "Katalog" as kat
+rectangle "Warenkorb" as cart
+rectangle "Bestellung" as order
+rectangle "Zahlung" as pay
+rectangle "Status" as status
+database "Cache" as cache
+database "SQL" as sql
+database "NoSQL" as kv
+database "Search" as search
+storage "Object Storage" as obj
+queue "Queue" as mq
+rectangle "Mail" as mail
+queue "Event Stream" as stream
+rectangle "Stream / Batch" as proc
+
+web --> dns
+web --> cdn
+cdn --> obj
+web --> gw
+app --> gw
+partner --> gw
+gw --> lb
+lb --> kat
+kat --> cache
+kat --> sql
+kat --> search
+gw --> cart
+cart --> kv
+gw --> order
+order --> pay
+order --> sql
+order ..> mq
+mq ..> mail
+order ..> stream
+stream ..> status
+status -[norank]-> gw
+stream ..> proc
+proc --> obj
+
+legend bottom right
+gestrichelt: asynchron
+endlegend
+@enduml
+```
+
+<!-- Alle Bausteine der folgenden Folien an ihrem Platz. Drei Detailbilder mit Beschriftung am Ende des Katalogs ("Bausteine im Zusammenspiel"). -->
+
 # Systemdesign: Grundlagen & Skalierung
 
 ## Load Balancer
@@ -509,6 +574,134 @@ Nach Jeff Dean und [Colin Scott](https://colin-scott.github.io/personal_website/
   - Ergebnisse in Sekunden, aber komplex: verspätete und doppelte Ereignisse, Zustand
 - **Beispiele:** Abrechnung und Reports (Batch) vs. Betrugserkennung und Live-Dashboards (Stream)
 - **Werkzeuge:** Spark (Batch), Flink und Kafka Streams (Stream)
+
+# Bausteine im Zusammenspiel
+
+## Lesepfad: Produktseite und Suche
+
+```{.plantuml height=80%}
+@startuml
+left to right direction
+skinparam shadowing false
+skinparam defaultFontSize 20
+skinparam ArrowFontSize 18
+skinparam nodesep 18
+skinparam ranksep 45
+skinparam legendFontSize 18
+actor "Browser" as web
+cloud "DNS" as dns
+cloud "CDN" as cdn
+storage "Object\nStorage" as obj
+rectangle "API Gateway\n(TLS)" as gw
+rectangle "Load\nBalancer" as lb
+collections "Katalog\n(3 Instanzen)" as kat
+database "Cache" as cache
+database "SQL" as sql
+database "Search" as search
+
+web --> dns
+web --> cdn : Bilder
+cdn --> obj
+web --> gw : REST
+gw --> lb
+lb --> kat
+kat --> cache : 1.
+kat --> sql : 2.
+kat --> search : Suche
+sql .[norank].> search
+
+legend bottom right
+gestrichelt: asynchron
+endlegend
+@enduml
+```
+
+<!-- Weg erzählen: Browser fragt DNS nach shop.de, lädt Bilder und JS vom CDN (bei Miss aus dem Object Storage). Die Produktseite geht per HTTPS an das API Gateway, dort endet TLS. Der Load Balancer verteilt auf drei Katalog-Instanzen. Katalog fragt zuerst den Cache, bei Miss die SQL-Datenbank (Cache-Aside). Suche geht an die Search Engine, die asynchron aus SQL nachgezogen wird, also kurz hinterherhinken kann. -->
+
+## Bestellpfad: mehrere Clients, mehrere Services
+
+```{.plantuml height=80%}
+@startuml
+left to right direction
+skinparam shadowing false
+skinparam defaultFontSize 20
+skinparam ArrowFontSize 18
+skinparam nodesep 18
+skinparam ranksep 45
+skinparam legendFontSize 18
+actor "Browser" as web
+actor "App" as app
+actor "Partner" as partner
+rectangle "API Gateway\nAuth, Rate Limit" as gw
+rectangle "Warenkorb" as cart
+database "NoSQL" as kv
+rectangle "Bestellung" as order
+rectangle "Zahlung" as pay
+rectangle "Lager" as stock
+database "SQL" as sql
+queue "Queue" as mq
+rectangle "Mail-\nWorker" as mail
+
+web --> gw : REST
+app --> gw : GraphQL
+partner --> gw : REST
+gw --> cart
+cart --> kv
+gw --> order
+order --> pay : gRPC
+order --> stock : gRPC
+order --> sql
+order ..> mq
+mq ..> mail
+
+legend bottom right
+gestrichelt: asynchron
+endlegend
+@enduml
+```
+
+<!-- Drei Zugreifer (Browser per REST, App per GraphQL, Partner per REST mit eigenem Limit) und mehrere Services dahinter: erst dadurch lohnt sich das API Gateway. Warenkorb liegt im NoSQL-Key-Value-Store (einfacher Zugriff über die Session). Bestellung ruft Zahlung und Lager synchron per gRPC auf und schreibt die Bestellung in einer Transaktion in SQL. Die Bestätigungsmail ist langsam und nicht kritisch, deshalb über die Queue an den Mail-Worker. -->
+
+## Echtzeit und Auswertung
+
+```{.plantuml height=80%}
+@startuml
+left to right direction
+skinparam shadowing false
+skinparam defaultFontSize 20
+skinparam ArrowFontSize 18
+skinparam nodesep 18
+skinparam ranksep 45
+skinparam legendFontSize 18
+actor "App" as app
+rectangle "Bestellung" as order
+rectangle "Status" as status
+database "SQL" as sql
+queue "Event\nStream" as stream
+rectangle "Stream Processing\n(Sekunden)" as fraud
+database "NoSQL" as risk
+storage "Object\nStorage" as lake
+rectangle "Batch\n(Stunden)" as batch
+database "Reporting\n(SQL)" as rep
+
+app --> order : über Gateway
+app <-- status : WebSocket
+order --> sql
+order ..> stream
+stream .[norank].> status
+stream ..> fraud
+fraud --> risk
+stream ..> lake
+lake --> batch
+batch --> rep
+
+legend bottom right
+gestrichelt: asynchron
+endlegend
+@enduml
+```
+
+<!-- Die Bestellung landet in SQL und als Ereignis im Event Stream. Daraus lesen unabhängig voneinander: der Status-Service (schickt den Live-Status per WebSocket an die App), die Betrugserkennung als Stream Processing in Sekunden (Ergebnis in NoSQL) und das Archiv im Object Storage, aus dem nachts ein Batch-Job die Reporting-Datenbank füllt. Gleiche Ereignisse, drei Konsumenten: genau der Unterschied zwischen Event Stream und Queue. -->
 
 ## Wie es weitergeht
 
