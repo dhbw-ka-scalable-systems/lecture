@@ -20,7 +20,7 @@ section-titles: true
 ## Vorstellung: Silas Schnurr
 
 - Per Du
-- E-Mail-Adresse: schnurr.silas@edu.dhbw-karlsruhe.de
+- E-Mail-Adresse: [schnurr.silas@edu.dhbw-karlsruhe.de](mailto:schnurr.silas@edu.dhbw-karlsruhe.de)
 - Seit 2025 IT-Berater/Lead Developer bei PTA IT-Beratung
 - 2015 - 2025 bei PeakAvenue in Bühl
   - 2023 - 2025: Softwarearchitekt & Teamleiter Softwareentwicklung
@@ -66,12 +66,12 @@ section-titles: true
 
 ## Vorlesungsinhalte
 
-1. 02.10. Grundlagen Systemdesign _(Silas)_
-2. 09.10. Datenarchitektur, Mandantenfähigkeit & Security _(Lukas)_
-3. 16.10. Technische Entscheidungsfindung: Trade-offs, Stakeholder & Kontext _(Silas)_
-4. 23.10. Resilienz, Fehlertoleranz & Hochverfügbarkeit _(Lukas)_
-5. 30.10. Architekturstile _(Silas)_
-6. 06.11. Betrieb, Observability & Deployment _(Lukas)_
+1. 02.10.2026 Grundlagen Systemdesign _(Silas)_
+2. 09.10.2026 Datenarchitektur, Mandantenfähigkeit & Security _(Lukas)_
+3. 16.10.2026 Technische Entscheidungsfindung: Trade-offs, Stakeholder & Kontext _(Silas)_
+4. 23.10.2026 Resilienz, Fehlertoleranz & Hochverfügbarkeit _(Lukas)_
+5. 30.10.2026 Architekturstile _(Silas)_
+6. 06.11.2026 Betrieb, Observability & Deployment _(Lukas)_
 7. Vor der Klausur: Wiederholung und Klausurvorbereitung _(2 VE, beide)_
 
 ## Literatur
@@ -79,8 +79,6 @@ section-titles: true
 - Mark Richards, Neal Ford: _Fundamentals of Software Architecture: An Engineering Approach_. O'Reilly, 2020
 - Martin Fowler: _Patterns of Enterprise Application Architecture_. Addison-Wesley, 2013 (19. Druck)
 - Neal Ford et al.: _Software Architecture: The Hard Parts: Modern Trade-off Analyses for Distributed Architectures_. O'Reilly, 2021
-
-Auf weitere Literatur wird in der Vorlesung an den entsprechenden Stellen verwiesen.
 
 ## Grundregeln
 
@@ -117,14 +115,14 @@ Wikipedia:
   - Last: Requests, gleichzeitige Nutzer
   - Daten: Volumen, Anzahl Datensätze
   - Geografie: Nutzer auf mehreren Kontinenten
-  - Organisation: mehr Teams am selben System (Bezug Vorlesung 5)
+  - Organisation: mehr Teams am selben System
 
 ## Abgrenzung
 
 - Performance: Wie schnell ist das System bei gegebener Last?
 - Elastizität: Wie schnell passt sich das System an schwankende Last an, auch nach unten?
 - Effizienz: Wie viele Ressourcen (CPU, Speicher, Server, Geld) verbraucht eine Einheit Arbeit, z. B. ein Request?
-  - Zwei Systeme gleich schnell, eines braucht doppelt so viele Server \rightarrow{} gleiche Performance, halbe Effizienz
+  - Zwei gleich schnelle Systeme, eines braucht doppelt so viele Server \rightarrow{} gleiche Performance, halbe Effizienz
 - Faustregel
   - Performance-Problem: schon für einen einzelnen Nutzer langsam
   - Skalierungsproblem: schnell für einen Nutzer, langsam unter Last
@@ -218,7 +216,6 @@ Von Frank Klemm, [_CC BY-SA 4.0_](https://creativecommons.org/licenses/by-sa/4.0
 - Zustandslose Komponenten lassen sich beliebig replizieren
 - Zustand muss irgendwo liegen: Datenbank, Cache, Session Store, Queue
 - Shared nothing verschiebt das Problem nur: Der Zustandsspeicher wird zum geteilten Engpass
-- Sticky Sessions als Übergangslösung und ihre Probleme (Wiederholung Webengineering)
 - Session-State-Muster nach Fowler: Client, Server und Database Session State
 - Muster: Zustand nach außen verlagern, Zustand partitionieren
 
@@ -291,73 +288,8 @@ Nach Jeff Dean und [Colin Scott](https://colin-scott.github.io/personal_website/
 ## Hinweis zu den folgenden Folien
 
 - Die Übersicht ist bewusst nicht vollständig
-  - nicht alle Einsatzzwecke, nicht alle Vor- und Nachteile, nicht alle Alternativen
+  - nicht alle Bausteine, nicht alle Einsatzzwecke, nicht alle Vor- und Nachteile, nicht alle Alternativen
 - Hilfe um zu verstehen, welches Problem ein Baustein löst und welches er neu schafft
-
-## Landkarte: Bausteine in einem Webshop
-
-```{.plantuml height=85%}
-@startuml
-left to right direction
-skinparam shadowing false
-skinparam defaultFontSize 20
-skinparam ArrowFontSize 18
-skinparam nodesep 18
-skinparam ranksep 45
-skinparam legendFontSize 18
-actor "Browser" as web
-actor "App" as app
-actor "Partner" as partner
-cloud "DNS" as dns
-cloud "CDN" as cdn
-rectangle "API Gateway" as gw
-rectangle "Load Balancer" as lb
-collections "Katalog" as kat
-rectangle "Warenkorb" as cart
-rectangle "Bestellung" as order
-rectangle "Zahlung" as pay
-rectangle "Status" as status
-database "Cache" as cache
-database "SQL" as sql
-database "NoSQL" as kv
-database "Search" as search
-storage "Object Storage" as obj
-queue "Queue" as mq
-rectangle "Mail" as mail
-queue "Event Stream" as stream
-rectangle "Stream / Batch" as proc
-
-web --> dns
-web --> cdn
-cdn --> obj
-web --> gw
-app --> gw
-partner --> gw
-gw --> lb
-lb --> kat
-kat --> cache
-kat --> sql
-kat --> search
-gw --> cart
-cart --> kv
-gw --> order
-order --> pay
-order --> sql
-order ..> mq
-mq ..> mail
-order ..> stream
-stream ..> status
-status -[norank]-> gw
-stream ..> proc
-proc --> obj
-
-legend bottom right
-gestrichelt: asynchron
-endlegend
-@enduml
-```
-
-<!-- Alle Bausteine der folgenden Folien an ihrem Platz. Drei Detailbilder mit Beschriftung am Ende des Katalogs ("Bausteine im Zusammenspiel"). -->
 
 # Systemdesign: Grundlagen & Skalierung
 
@@ -574,134 +506,6 @@ endlegend
   - Ergebnisse in Sekunden, aber komplex: verspätete und doppelte Ereignisse, Zustand
 - **Beispiele:** Abrechnung und Reports (Batch) vs. Betrugserkennung und Live-Dashboards (Stream)
 - **Werkzeuge:** Spark (Batch), Flink und Kafka Streams (Stream)
-
-# Bausteine im Zusammenspiel
-
-## Lesepfad: Produktseite und Suche
-
-```{.plantuml height=80%}
-@startuml
-left to right direction
-skinparam shadowing false
-skinparam defaultFontSize 20
-skinparam ArrowFontSize 18
-skinparam nodesep 18
-skinparam ranksep 45
-skinparam legendFontSize 18
-actor "Browser" as web
-cloud "DNS" as dns
-cloud "CDN" as cdn
-storage "Object\nStorage" as obj
-rectangle "API Gateway\n(TLS)" as gw
-rectangle "Load\nBalancer" as lb
-collections "Katalog\n(3 Instanzen)" as kat
-database "Cache" as cache
-database "SQL" as sql
-database "Search" as search
-
-web --> dns
-web --> cdn : Bilder
-cdn --> obj
-web --> gw : REST
-gw --> lb
-lb --> kat
-kat --> cache : 1.
-kat --> sql : 2.
-kat --> search : Suche
-sql .[norank].> search
-
-legend bottom right
-gestrichelt: asynchron
-endlegend
-@enduml
-```
-
-<!-- Weg erzählen: Browser fragt DNS nach shop.de, lädt Bilder und JS vom CDN (bei Miss aus dem Object Storage). Die Produktseite geht per HTTPS an das API Gateway, dort endet TLS. Der Load Balancer verteilt auf drei Katalog-Instanzen. Katalog fragt zuerst den Cache, bei Miss die SQL-Datenbank (Cache-Aside). Suche geht an die Search Engine, die asynchron aus SQL nachgezogen wird, also kurz hinterherhinken kann. -->
-
-## Bestellpfad: mehrere Clients, mehrere Services
-
-```{.plantuml height=80%}
-@startuml
-left to right direction
-skinparam shadowing false
-skinparam defaultFontSize 20
-skinparam ArrowFontSize 18
-skinparam nodesep 18
-skinparam ranksep 45
-skinparam legendFontSize 18
-actor "Browser" as web
-actor "App" as app
-actor "Partner" as partner
-rectangle "API Gateway\nAuth, Rate Limit" as gw
-rectangle "Warenkorb" as cart
-database "NoSQL" as kv
-rectangle "Bestellung" as order
-rectangle "Zahlung" as pay
-rectangle "Lager" as stock
-database "SQL" as sql
-queue "Queue" as mq
-rectangle "Mail-\nWorker" as mail
-
-web --> gw : REST
-app --> gw : GraphQL
-partner --> gw : REST
-gw --> cart
-cart --> kv
-gw --> order
-order --> pay : gRPC
-order --> stock : gRPC
-order --> sql
-order ..> mq
-mq ..> mail
-
-legend bottom right
-gestrichelt: asynchron
-endlegend
-@enduml
-```
-
-<!-- Drei Zugreifer (Browser per REST, App per GraphQL, Partner per REST mit eigenem Limit) und mehrere Services dahinter: erst dadurch lohnt sich das API Gateway. Warenkorb liegt im NoSQL-Key-Value-Store (einfacher Zugriff über die Session). Bestellung ruft Zahlung und Lager synchron per gRPC auf und schreibt die Bestellung in einer Transaktion in SQL. Die Bestätigungsmail ist langsam und nicht kritisch, deshalb über die Queue an den Mail-Worker. -->
-
-## Echtzeit und Auswertung
-
-```{.plantuml height=80%}
-@startuml
-left to right direction
-skinparam shadowing false
-skinparam defaultFontSize 20
-skinparam ArrowFontSize 18
-skinparam nodesep 18
-skinparam ranksep 45
-skinparam legendFontSize 18
-actor "App" as app
-rectangle "Bestellung" as order
-rectangle "Status" as status
-database "SQL" as sql
-queue "Event\nStream" as stream
-rectangle "Stream Processing\n(Sekunden)" as fraud
-database "NoSQL" as risk
-storage "Object\nStorage" as lake
-rectangle "Batch\n(Stunden)" as batch
-database "Reporting\n(SQL)" as rep
-
-app --> order : über Gateway
-app <-- status : WebSocket
-order --> sql
-order ..> stream
-stream .[norank].> status
-stream ..> fraud
-fraud --> risk
-stream ..> lake
-lake --> batch
-batch --> rep
-
-legend bottom right
-gestrichelt: asynchron
-endlegend
-@enduml
-```
-
-<!-- Die Bestellung landet in SQL und als Ereignis im Event Stream. Daraus lesen unabhängig voneinander: der Status-Service (schickt den Live-Status per WebSocket an die App), die Betrugserkennung als Stream Processing in Sekunden (Ergebnis in NoSQL) und das Archiv im Object Storage, aus dem nachts ein Batch-Job die Reporting-Datenbank füllt. Gleiche Ereignisse, drei Konsumenten: genau der Unterschied zwischen Event Stream und Queue. -->
 
 ## Wie es weitergeht
 
