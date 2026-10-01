@@ -15,6 +15,20 @@ toc: true
 section-titles: true
 ...
 
+
+<!--
+
+
+## Event-Driven Architecture (Pub/Sub)
+
+- **Problem:** Ein Service muss alle anderen kennen und aufrufen, die auf sein Ereignis reagieren sollen
+- **Lösung:** Ein Produzent veröffentlicht ein Ereignis ("Bestellung aufgegeben"), beliebig viele Abonnenten reagieren (Rechnung, Versand, Benachrichtigung)
+- Unterschied zur Queue: Befehl an einen Empfänger vs. Ereignis an alle Interessierten
+- **Nachteile:** Der Gesamtablauf ist nirgends an einer Stelle sichtbar; Reihenfolge, Duplikate, Weiterentwicklung der Event-Formate
+- **Beispiele:** AWS SNS, Google Pub/Sub, Kafka
+- Vertiefung in Vorlesung 5
+
+-->
 <!--
 Time plan: 4 VE = 180 min content, Friday 8:30-11:45 with a 15 min break on top.
   Heute, Lernziele                         5

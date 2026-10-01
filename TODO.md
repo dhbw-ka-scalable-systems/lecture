@@ -1,6 +1,6 @@
 # Plan
 
-Lecture "Skalierbare Systeme", DHBW Karlsruhe, winter semester 2026. Seven sessions, 26 VE, alternating between Silas (Si) and Lukas (Lu). Every content session ends with an "AI Engineering" section that maps the session's topic onto LLM-based systems.
+Lecture "Skalierbare Systeme", DHBW Karlsruhe, winter semester 2026. Seven sessions, 26 VE, alternating between Silas (Si) and Lukas (Lu). Where it fits, a session brings in AI engineering and maps its topic onto LLM-based systems; a dedicated "AI Engineering" section is optional.
 
 ## Module
 
@@ -48,7 +48,7 @@ Status values: outline, draft, review, done.
 
 The outlines say where a topic is deepened later or was introduced before. Keep these in sync when moving content.
 
-- Session 1 previews database scaling (2), idempotency and backpressure (4), API vs. self-hosting (3)
+- Session 1 is the map: its building-block catalog touches most later topics briefly (what, what for, cost, alternatives) and points to the owning session: data, replication, sharding, CAP/PACELC, ACID, NoSQL, 2PC/saga, TLS (2); unreliable networks, rate limiting, idempotency, backpressure, service mesh (4); API gateway, microservices, event-driven, gRPC, Conway's Law (5); API vs. self-hosting (3)
 - Session 2 previews the saga pattern (5) and outbox plus idempotency (4). CQRS and event sourcing live in session 5 only, schema migrations in session 6 only.
 - Sessions 4 and 6 share SLOs, post-mortems, health checks and orchestration
 - Session 5 reuses the ADR format from session 3 in its worked example
@@ -84,6 +84,6 @@ Further sources, referenced where they fit:
 ## Open
 
 - [ ] Exam: format, duration, aids, weighting, date (TODO markers in sessions 1 and 7). Session 7 is scheduled one or two weeks before it.
-- [ ] Diagrams: none yet; candidates are marked in the outlines (latency table, style comparison table, LLM reference architecture)
+- [ ] Diagrams: latency table done (session 1); remaining candidates are marked in the outlines (style comparison table, LLM reference architecture)
 - [ ] Session 4: pick the public post-mortem for the case slide
 - [ ] Session 6: pick the stack for the observability demo
