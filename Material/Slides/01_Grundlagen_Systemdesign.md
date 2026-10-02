@@ -165,7 +165,7 @@ Wikipedia:
 
 - Vertikale Skalierung (scale up): größere Maschine; einfach, begrenzt, teuer am oberen Ende
 - Horizontale Skalierung (scale out): mehr Maschinen; nahezu unbegrenzt, erfordert Verteilung
-- Shared-nothing-Architektur als Voraussetzung für Scale-out
+- Shared-nothing-Architektur für Scale-out
 - In der Praxis: Mischformen (on prem <-> Cloud)
 
 ## Shared-nothing-Architektur
@@ -186,7 +186,7 @@ Wikipedia:
   - Autoscaling und Container machen Scale-out zum Standard
 - Aber: Auch vertikal geht heute weiter als früher, einzelne Instanzen mit Hunderten Kernen und TB RAM
 
-- Scale-out ist billiger geworden, aber nicht kostenlos: Verteilung bringt Komplexität (nächste Folie)
+- Scale-out ist billiger geworden, aber nicht kostenlos: Verteilung bringt Komplexität
 
 ## Grenzen der Skalierung
 
