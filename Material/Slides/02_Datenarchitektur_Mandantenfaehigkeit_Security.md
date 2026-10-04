@@ -283,7 +283,22 @@ Eine einzelne Datenbank kann an Grenzen stoßen:
 - **CAP** = Consistency, Availability, Partition Tolerance (ein verteiltes System kann immer nur zwei der drei Eigenschaften gleichzeitig erfüllen)
   - Bei Netzwerkunterbrechung zwischen Konsistenz und Verfügbarkeit wählen
 
-## Replikation (3)
+## CAP
+
+![CAP](media/cap.png)
+
+> <https://medium.com/@anupchakole/understanding-the-cap-theorem-why-your-system-cant-have-it-all-4004c25e021f>
+
+## BASE
+
+**B**asically **A**vailable, **S**oft State, **E**ventual Consistency
+
+- Alternatives Konsistenzmodell zu ACID in verteilten Systemen
+- Hohe Verfügbarkeit, gute Skalierbarkeit
+- Tradeoff: geringere Konsistenzgarantien
+- In NoSQL-Datenbanken in verteilten Systemen verbreitet
+
+## Replikation Modelle
 
 - **Leader-Follower Modell**
   - Ein Server ist der Leader, alle anderen sind Follower
@@ -292,6 +307,9 @@ Eine einzelne Datenbank kann an Grenzen stoßen:
     - synchron oder asynchron möglich
     - bei asynchroner Replikation nur eventual consistency
 - Anpassung: Multi-Leader
+  - Mehrere Leader erlauben parallele Schreibzugriffe
+  - Konflikte müssen aufgelöst werden
+  - Oder Kombination mit Sharding
 - Komplexer: Leaderless mit Quoren
 
 ## Partitionierung / Sharding
@@ -316,6 +334,71 @@ Eine einzelne Datenbank kann an Grenzen stoßen:
   - **Hash Sharding**: Aufteilung nach Hashwert des Shard Keys
     - Ziel: gleichmäßige Verteilung der Daten auf die Shards
     - Schlecht wenn häufig ganze Wertebereiche abgefragt werden
+
+## Sharding Umsetzung (2)
+
+![Sharding Umsetzung](media/Sharding_Shard_Key.pdf)
+
+## Sharding Umsetzung (3)
+
+![Sharding Umsetzung](media/Sharding_Router.pdf)
+
+## Sharding Herausforderungen
+
+- Aufteilung der Daten ist Anwendungsfallabhängig
+  - **Ziel**: gleichmäßige Verteilung der Last
+  - Last kann sich über Zeit verschieben, Rebalancing notwendig
+- Größerer Aufwand bei Cross-Shard-Operationen: z.B. Joins über mehrere Shards, globale Abfragen, Transaktionen
+- Abhilfe durch Denormalisierung möglich, aber Aufwand um Konsistenz sicherzustellen
+
+## Verteilte Transaktionen
+
+- Transaktionen zwischen verschiedenen Shards oder verschiedenen Systemen erfordern spezielle Koordination
+  - Datenbanksystem selbst kann ACID nicht mehr ohne weiteres garantieren
+
+- **Two-Phase Commit (2PC)**
+  - _Phase 1_: Prepare
+    - Alle Systeme prüfen, ob sie die Transaktion ausführen können
+  - _Phase 2_: Commit
+    - Wenn alle Systeme bereit sind, wird die Transaktion ausgeführt
+    - Andernfalls wird sie abgebrochen
+    - Rollback, wenn ein System die erfolgreiche Ausführung der Transaktion nicht bestätigen kann
+
+## Verteilte Transaktionen (2)
+
+- 2PC Nachteile
+  - Koordinator notwendig
+  - hohe Latenz, geringer Durchsatz, viel Kommunikationsoverhead
+  - Problematisch bei System/Kommunikations-ausfällen
+- Bei Aktualisierung von externen Systemen: Outbox Pattern
+  - Aktualisierung von internem Anwendungszustand per Transaktion
+  - In gleicher Transaktion wird ein Aktualisierungs-Event in der DB gespeichert
+  - Events werden nachgelagert an externe Systeme gesendet
+  - Idempotenz bei Event-Empfänger notwendig!
+
+## Outbox Pattern Beispiel
+
+![Outbox Pattern Beispiel](media/Outbox_Pattern.png)
+
+## Daten aufteilen? Data Disintegrators
+
+- **Änderungen:** Auswirkungen von Änderungen an Daten auf Services
+  - Trennung erleichtert Änderungen an getrennten Services
+  - Trennung verringert Koordinationsaufwand über verschiedene Entwicklungs-Teams
+  - Klare Datenhoheit wichtig (auch in monolithischen DBs): mehrere Services sollten nicht gleichzeitig die gleichen Daten ändern
+- **Betrieb + Skalierung:**
+  - Trennung ermöglicht unabhängige Skalierung und Wartung
+  - Trennung erleichtert Verbindungsmanagement und Auslastung von Connection Pools
+  - Trennung erleichtert Fehlertoleranz für _Teile_ der Anwendung
+
+## Daten zusammenhalten? Data Integrators
+
+- **Beziehungen:**
+  - Fremdschlüssel und Constraints sichern Integrität, koppeln aber zusammengehörige Daten
+  - Konsistenz wird durch geteilte Daten erschwert
+- **Transaktionen:**
+  - Gemeinsame ACID-Transaktionen sind über getrennte Datenbanken nicht ohne Weiteres möglich
+  - Verteilte Transaktionen bringen Koordination, Latenz und Ausfallrisiken mit sich
 
 # Mandantenfähigkeit
 
@@ -368,6 +451,10 @@ Kein Modell gewinnt immer: Compliance, Größe, Kosten und Betrieb entscheiden.
 - Kaum gemeinsame Infrastrukturnutzung, keine Skaleneffekte
 - Schlecht für Mandantenübergreifende Operationen: Administration, Observability
 
+## Silo
+
+![Silo](media/Silo_Dbs.pdf)
+
 ## Pool: einfach umzusetzen, aber mit Risiken
 
 ```text
@@ -378,6 +465,10 @@ booking(id, organization_id, host_id, start_time, status)
 - jede relevante Abfrage ist mandantengebunden
 - ein vergessener Filter wird zum Datenleck, Fehler haben große Auswirkungen
 - gemeinsame Infrastruktur: kostengünstig, Last aber auch geteilt -> _Noisy Neighbours_
+
+## Pool
+
+![Pool](media/Pool.pdf)
 
 ## Bridge: mittlere Isolation, mittlerer Aufwand
 
@@ -439,12 +530,64 @@ Bewertet _Isolation_, _Kosten_, _Betrieb_, _Skalierung_ für die verschiedenen M
 
 # System-Security
 
-## Security als Architekturthema
+## Begriffe
 
-- Webengineering: OWASP Top 10, Injection, XSS, CSRF, Session-Sicherheit
-- Jetzt: das Gesamtsystem, seine Grenzen und Abhängigkeiten
-- Angriffsfläche wächst mit jeder Komponente und jeder Schnittstelle
-- Security by Design, Defense in Depth, Least Privilege
+- Sicherheitsziele: **C**onfidentiality, **I**ntegrity, **A**vailability
+- **Bedrohung:** mögliche Verletzung eines Sicherheitsziels
+- **Angriff**: konkreter Versuch ein Sicherheitsziel zu verletzen
+- **Risiko:** Wahrscheinlichkeit × Auswirkung
+- Mechanismen: **Prevention**, **Detection**, **Recovery**
+
+## Security ist ein Qualitätsattribut
+
+- **Vertraulichkeit:** nur Berechtigte sehen Daten
+- **Integrität:** Daten werden nicht unbemerkt verfälscht
+- **Verfügbarkeit:** Berechtigte können den Dienst nutzen
+
+**Sicherheit entsteht durch Entscheidungen im Systemdesign**
+
+## Authentifizierung ist nicht Autorisierung
+
+- **Authentifizierung**: Verknüpfung von Identität und Individuum (Subjekt)
+  - Identität bestätigen durch: Wissen (Passwörter), Besitz (Token), Individuelle Eigenschaften (Biometrie)
+
+- **Autorisierung**: Festlegung was ein Subjekt darf.
+
+## Trust Boundary
+
+> Eine Trust Boundary ist die Grenze zwischen Bereichen unterschiedlichen Vertrauens innerhalb eines Systems.
+
+- Daten/Anfragen aus andererm Vertrauensbereich müssen besonders geprüft werden
+- Beispiele für Trust Boundaries:
+  - Netzwerkgrenze (Internet ↔ interne Dienste)
+  - Anwendungsschicht (Frontend ↔ Backend)
+  - Datenbankzugriff (Service ↔ Datenbank)
+
+## Trust Boundaries sichtbar machen
+
+```plantuml
+@startuml
+left to right direction
+actor Gast
+rectangle "Internet" {
+  [Browser]
+  [Kalender-API]
+}
+rectangle "Terminplattform" {
+  [API]
+  [Buchungsservice]
+  database "PostgreSQL" as DB
+}
+
+Gast --> [Browser]
+[Browser] --> [API] : Request + Eingaben
+[API] --> [Buchungsservice]
+[Buchungsservice] --> DB
+[Buchungsservice] --> [Kalender-API] : Token + API-Aufruf
+@enduml
+```
+
+- An jeder Grenze: Identität, Eingaben, Rechte und Datenfluss prüfen
 
 ## Threat Modeling
 
