@@ -16,15 +16,15 @@ section-titles: true
 ...
 
 <!--
-Time plan: 4 VE = 180 min content, Friday 8:30-11:45 with a 15 min break on top.
-  Organisatorisches (Heute, Vorstellung)   8
-  Lernziele                                2
-  Datenarchitektur                        50   8 slides
-  Mandantenfähigkeit                      40   worked example ~15
-  System-Security                         40   6 slides
-  AI Engineering                          15
-  Zusammenfassung                          5
-  Sum                                    160   20 min slack
+Time plan: 4 VE = 180 min total: 15 min Organisatorisches, 15 min pause,
+150 min subject matter.
+  Organisatorisches                         15
+  Datenarchitektur                          60   Think-Pair-Share 6
+  Mandantenfähigkeit                        28   Gruppenphase 12
+  System-Security                           35   Think-Pair-Share 8
+  AI Engineering                             7
+  Zusammenfassung                            5
+  Sum                                      150
 -->
 
 # Organisatorisches
@@ -40,8 +40,6 @@ Time plan: 4 VE = 180 min content, Friday 8:30-11:45 with a 15 min break on top.
 ## Vorstellung
 
 ### Dozent: Lukas Panni
-
-<!-- TODO(Lu): bio and e-mail address -->
 
 - Per Du
 - E-Mail-Adresse: <lukas.panni@outlook.de>
@@ -118,7 +116,7 @@ entity Booking
 User ||--o{ EventType
 User ||--o{ Availability
 EventType ||--o{ Booking
-User ||--o{ Booking : host
+Room ||--o{ Booking
 @enduml
 ```
 
@@ -171,7 +169,7 @@ Typische Abfragen:
 - Jedes zusätzliche System kostet Betrieb, Konsistenzarbeit und Wissen
 - Deshalb: erst ein passendes System, weitere nur bei messbarem Bedarf
 
-## Wiederholung Transaktionen (1)
+## Wiederholung Transaktionen
 
 > Folge von Operationen, die als logische Einheit betrachtet werden und entweder vollständig ausgeführt oder vollständig zurückgesetzt werden.
 
@@ -187,14 +185,14 @@ Nicht Teil derselben Datenbanktransaktion:
 - E-Mail-Versand
 - Webhooks
 
-## Wiederholung Transaktionen (2) ACID
+## Wiederholung Transaktionen - ACID
 
 - **Atomicity:** ganz oder gar nicht
 - **Consistency:** Datenregeln bleiben erfüllt
 - **Isolation:** parallele Transaktionen sehen keinen unkontrollierten Zwischenstand
 - **Durability:** bestätigte Daten bleiben gespeichert
 
-## Think-Pair-Share: Doppelbuchung
+## Aufgabe: Doppelbuchung
 
 **Arbeitszeit: 6 Minuten — 2 allein, 2 zu zweit, 2 im Plenum**
 
@@ -223,11 +221,11 @@ Warum lösen Transaktionen das Problem der Doppelbuchung nicht garantiert?
 
 Isolation bestimmt, welche Auswirkungen **parallel laufender Transaktionen** sichtbar werden.
 
-| Level                      | Zusage                                                                                                               |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Level                      | Zusage                                                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | Read Committed             | Transaktion kann nur bestätigte (commitete) Änderungen sehen; zwischen zwei Operationen kann sich der Stand ändern. |
 | Repeatable Read / Snapshot | Transaktion sieht nur Änderungen, die vor Start der Transaktion commitet wurden.                                    |
-| Serializable               | Transaktionen wirken als wären sie nacheinander ausgeführt worden, keine phantom reads möglich                       |
+| Serializable               | Transaktionen wirken als wären sie nacheinander ausgeführt worden, keine phantom reads möglich                      |
 
 - Höhere Isolation bedeutet mehr Koordination, mögliche Abbrüche und Retries
 - Details und konkrete Namen unterscheiden sich je nach DBMS
@@ -298,19 +296,31 @@ Eine einzelne Datenbank kann an Grenzen stoßen:
 - Tradeoff: geringere Konsistenzgarantien
 - In NoSQL-Datenbanken in verteilten Systemen verbreitet
 
-## Replikation Modelle
+## Replikation Modelle (1)
 
-- **Leader-Follower Modell**
-  - Ein Server ist der Leader, alle anderen sind Follower
-  - Schreibzugriffe gehen an den Leader, Lesezugriffe sind bei allen möglich
-  - Aktualisierungen werden vom Leader an die Follower weitergegeben
-    - synchron oder asynchron möglich
-    - bei asynchroner Replikation nur eventual consistency
+**Leader-Follower Modell**
+
+- Ein Server ist der Leader, alle anderen sind Follower
+- Schreibzugriffe gehen an den Leader, Lesezugriffe sind bei allen möglich
+- Aktualisierungen werden vom Leader an die Follower weitergegeben
+  - synchron oder asynchron möglich
+  - bei asynchroner Replikation nur eventual consistency möglich
+- **Vorteil:** Einfaches Konsistenzmodell, leicht zu verstehen und zu implementieren
+- **Nachteil:** Single Point of Failure beim Leader, mögliche Performance-Engpässe beim Leader
+
+## Replikation Modelle (2)
+
+![Replikation Lag](media/Replication_Lag.pdf)
+
+## Replikation Modelle (3)
+
 - Anpassung: Multi-Leader
   - Mehrere Leader erlauben parallele Schreibzugriffe
   - Konflikte müssen aufgelöst werden
   - Oder Kombination mit Sharding
 - Komplexer: Leaderless mit Quoren
+  - Jeder Read/Write Zugriff auf mehrere Replikate
+  - Konsistenz wird durch Quoren sichergestellt (Mehrheit der Replikate muss zustimmen)
 
 ## Partitionierung / Sharding
 
@@ -321,7 +331,7 @@ Eine einzelne Datenbank kann an Grenzen stoßen:
   - Parallele Schreib- und Lesezugriffe ohne zusätzliche Koordination
   - bei Geografischer Verteilung oft gut: z.B. deutsche User nutzen häufig deutsche Daten, andere weniger häufig
 
-## Sharding Umsetzung
+## Sharding Umsetzung (1)
 
 - Shard Key: Alle Daten eines bestimmten Schlüssels liegen auf demselben Shard
   - z.B. user_id -> Daten werden nach User-ID aufgeteilt: gleiche user_id = gleicher Shard
@@ -419,6 +429,10 @@ Eine einzelne Datenbank kann an Grenzen stoßen:
 - Ökonomischere Ressourcennutzung, spart Betriebskosten
 - Zentrale Weiterentwicklung
 - Skalierbarer Betrieb
+
+## Zielbild
+
+![Zielbild](media/Zielbild_SaaS.pdf)
 
 ## Von Single-Tenancy zu Multi-Tenancy (1)
 
@@ -553,6 +567,82 @@ Bewertet _Isolation_, _Kosten_, _Betrieb_, _Skalierung_ für die verschiedenen M
 
 - **Autorisierung**: Festlegung was ein Subjekt darf.
 
+## Tokens und Service-Identitäten
+
+- JSON Web Token (JWT) ist ein Tokenformat: Signatur, Aussteller, Zielgruppe und Ablaufzeit prüfen
+- Übliche signierte JWTs sind nicht verschlüsselt: keine Secrets oder sensiblen Daten in den Payload
+- Services nutzen eine eigene Identität, etwa Service Account oder Workload Identity, nicht das Token eines Nutzers
+- mTLS authentifiziert beide Enden einer Verbindung; Rechte für Aktionen bleiben eine Autorisierungsfrage
+- Kurzlebige Tokens und Rotation begrenzen den Schaden bei einem Leak
+
+## Least Privilege – Prinzip der geringsten Rechte
+
+**Prinzip:** Jede Identität erhält nur die Rechte, die sie für ihre Aufgabe (zwingend) benötigt.
+
+Gilt für:
+
+- Benutzer und Administratoren
+- Services und Worker
+- Datenbankbenutzer
+- Cloud-Identitäten und externe API-Tokens
+
+Beispiele:
+
+- Anwendung läuft nicht als PostgreSQL-Superuser
+- Webhook-Worker darf keine Benutzerrollen ändern
+- OAuth-Token fordert nur notwendige Scopes an
+- Supportzugriff ist zeitlich begrenzt
+
+## Threat Modeling – Ziel
+
+**Threat Modeling** untersucht ein System strukturiert aus Sicht möglicher Angriffe und Fehlbedienungen.
+
+- schützenswerte Daten und Funktionen erkennen
+- Angriffsflächen und Trust Boundaries sichtbar machen
+- konkrete Bedrohungen identifizieren
+- Risiken priorisieren
+- passende Schutzmaßnahmen bereits im Design ableiten
+
+Wichtig:
+
+- nicht jede theoretische Bedrohung finden, sondern relevante Risiken systematisch behandeln
+
+## Threat Modeling – grundlegendes Vorgehen
+
+1. **Was bauen wir?**
+   - Komponenten, Datenflüsse und externe Systeme modellieren
+2. **Was kann schiefgehen?**
+   - Assets, Einstiegspunkte, Trust Boundaries und Bedrohungen untersuchen
+3. **Was tun wir dagegen?**
+   - Kontrollen und Architekturmaßnahmen definieren
+4. **Reicht das aus?**
+   - Risiken priorisieren, Maßnahmen prüfen, Restrisiken dokumentieren
+
+## Bedrohungskategorien: STRIDE
+
+- **Spoofing**: Vortäuschen einer falschen Identität
+- **Tampering**: Unbefugtes Verändern von Daten
+- **Repudiation**: Abstreiten von Aktionen
+- **Information Disclosure**: Unbefugtes Offenlegen von Informationen
+- **Denial of Service**: Verhinderung der Nutzung eines Dienstes
+- **Elevation of Privilege**: Erlangen höherer Rechte als erlaubt
+
+## Threat Modeling – Systemmodell erstellen
+
+Beispiel Terminbuchung:
+
+- Browser des Benutzers
+- Anwendung / API
+- PostgreSQL-Datenbank
+- externer Kalenderdienst
+- eingehende Webhooks
+
+Wichtige Assets:
+
+- Buchungen und Kontaktdaten
+- Organisations- und Berechtigungsdaten
+- Sessions und OAuth-Tokens
+
 ## Trust Boundary
 
 > Eine Trust Boundary ist die Grenze zwischen Bereichen unterschiedlichen Vertrauens innerhalb eines Systems.
@@ -589,75 +679,96 @@ Gast --> [Browser]
 
 - An jeder Grenze: Identität, Eingaben, Rechte und Datenfluss prüfen
 
-## Threat Modeling
+## Aufgabe: Threat Model
 
-- Was bauen wir? Was kann schiefgehen? Was tun wir dagegen? Haben wir es gut gemacht?
-- STRIDE als Checkliste: Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege
-- Vertrauensgrenzen (Trust Boundaries) in Architekturdiagramme einzeichnen
-- Zero Trust: kein implizites Vertrauen im internen Netz
+**Arbeitszeit: 8 Minuten — 2 allein, 3 zu zweit, 3 im Plenum**
 
-## Identität und Zugriff
+Nehmt eine Grenze aus dem Diagramm und beantwortet:
 
-- Authentifizierung vs. Autorisierung
-- OAuth 2.0 und OpenID Connect: Rollen, Flows, Tokens
-- JWT: Aufbau, Prüfung, typische Fehler
-- Service-zu-Service: mTLS, Service Accounts, Workload Identity
-- Autorisierungsmodelle: RBAC, ABAC, ReBAC; zentral oder dezentral prüfen?
+1. Was kann hier schiefgehen?
+2. Welche Daten oder Aktion sind betroffen?
+3. Welche Maßnahmen helfen?
 
-## Secrets und Verschlüsselung
+Checkliste bei Bedarf: STRIDE
 
-- Secrets-Management: Vault, Cloud-KMS, keine Secrets im Code oder Image
-- Rotation und kurzlebige Zugangsdaten
-- Verschlüsselung in Transit (TLS überall) und at Rest
-- Schlüsselverwaltung als eigenes Problem
+## Threat Modeling – Beispielbedrohungen
 
-## Netzwerk und Perimeter
+| Bedrohung                              | Mögliche Ursache              | Mögliche Kontrolle                   |
+| -------------------------------------- | ----------------------------- | ------------------------------------ |
+| Benutzer liest fremde Buchung          | fehlende Tenant-Prüfung       | objektbezogene Autorisierung         |
+| Angreifer übernimmt Session            | gestohlenes Session-Token     | sichere Session, kurze Laufzeit, TLS |
+| OAuth-Token des Kalenders wird geleakt | Secret im Log oder Repository | Secret Store, eingeschränkte Logs    |
+| Gefälschter Webhook verändert Daten    | Absender nicht geprüft        | Signatur prüfen, Replay-Schutz       |
+| Ein Client überlastet die API          | unbegrenzte Requests          | Rate Limits, Queues                  |
 
-- Segmentierung: öffentliche Zone, private Zone, Datenzone
-- API Gateway: Authentifizierung, Rate Limiting, zentrale Policies
-- WAF und DDoS-Schutz
-- Egress-Kontrolle: Was darf das System nach außen?
+## Risiken priorisieren
 
-## Supply Chain und Betrieb
+Bewertung nach:
 
-- Abhängigkeiten: bekannte Schwachstellen, Lockfiles, Scans
-- Container-Images: Basis-Images, Signaturen, SBOM
-- Audit Logging: wer hat wann was getan
-- Compliance: DSGVO, Datenlokalität, Löschkonzepte; Bezug zur Datenarchitektur
+- **Wahrscheinlichkeit:** Wie realistisch ist eine Ausnutzung?
+- **Auswirkung:** Wie groß wäre der Schaden?
 
-# AI Engineering: Daten und Sicherheit für KI-Systeme
+Vereinfachte Einordnung:
 
-## Neue Datentypen
+- hohe Wahrscheinlichkeit + hohe Auswirkung → zuerst behandeln
+- geringe Risiken können bewusst akzeptiert werden
+- Ergebnis Threat Modeling: priorisierte Risiken, geplante Kontrollen und _dokumentierte Restrisiken_
 
-- Embeddings und Vektordatenbanken: Ähnlichkeitssuche statt exakter Abfragen
-- RAG-Datenpipeline: Chunking, Embedding, Indexierung, Aktualisierung
-- Mandantenfähigkeit im Vektorindex: Namespace oder Filter pro Mandant, Isolation der Suchergebnisse
-- Konsistenz zwischen Quellsystem und Index
+## Daten schützen – in transit
 
-## Datenschutz und Datenabfluss
+**In transit:** Verschlüsselung von Daten bei Übertragung zwischen Systemen
 
-- Inferenzdaten verlassen das System, wenn externe Modell-APIs genutzt werden
-- Vertragliche und technische Absicherung: Auftragsverarbeitung, Regionen, keine Trainingsnutzung
-- Personenbezogene Daten in Prompts, Logs und Traces
-- Löschkonzepte für Embeddings und Caches
+- TLS für alle Verbindungen nutzen
+  - Schutz vor Mitlesen und Manipulation
+- Zertifikate korrekt prüfen!
+- sensible Daten nicht unverschlüsselt übertragen, auch nicht über interne Netzwerke
 
-## Neue Angriffsklassen
+## Daten schützen – at rest
 
-- Prompt Injection: direkt und indirekt über Dokumente, Websites, Tool-Ausgaben
-- Datenexfiltration über Tool-Aufrufe und Links
-- Least Privilege für Tools und Agenten, Bestätigung bei kritischen Aktionen
-- OWASP Top 10 for LLM Applications als Checkliste
+**At rest:** Verschlüsselung von gespeicherten Daten
 
-# Zusammenfassung
+- Verschlüsselung von Datenträgern oder Datenbank-Storage
+- Backups mit demselben Schutzbedarf behandeln
+- besonders sensible Felder bei Bedarf zusätzlich auf Anwendungsebene verschlüsseln
+- Schlüssel getrennt von den verschlüsselten Daten verwalten!
 
-## Zusammenfassung
+## Audit Logging
 
-- Replikation skaliert Lesen und schafft Verfügbarkeit, Partitionierung skaliert Schreiben und Datenmenge
-- Konsistenz ist eine Entscheidung pro Operation, nicht pro System
-- Mandantenfähigkeit: Silo, Bridge, Pool; Isolation muss erzwungen werden, nicht erhofft
-- Security beginnt bei Vertrauensgrenzen und Identitäten, nicht bei der Firewall
-- KI-Systeme bringen neue Datentypen und Angriffsklassen, die Regeln bleiben gleich
+> Nachvollziehbare Aufzeichnung sicherheitsrelevanter Aktionen
 
-## Nächste Vorlesung
+- wer (Identität), wann (Timestamp), wo (Kontext), was (Aktion/Zielobjekt) + Ergebnis (erfolgreich/abgelehnt)
+- Nicht zu verwechseln mit Anwendungslog für technische Diagnose + Betrieb
+- z.B. Rollenänderungen, API-Key Erstellung/Entzug, export sensibler Daten
+- Logs müssen vor Manipulation und Löschung geschützt werden
+
+## Defense in Depth
+
+- Mehrere Schutzschichten verhindern, dass einzelne Fehler direkt problematisch werden
+
+1. TLS schützt den Transportweg
+2. Authentifizierung bestimmt die Identität
+3. Autorisierung prüft Aktion und Zielobjekt
+4. Least Privilege begrenzt mögliche Auswirkungen
+5. Tenant Context und Datenbankregeln schützen Datenzugriffe
+6. Audit Logs machen kritische Änderungen nachvollziehbar
+
+## Network Security
+
+- zentrales API Gateway für Authentifizierung, Rate Limits und Policies
+  - Nur ein einzelner Zugangspunkt für externe Anfragen muss geschützt werden
+- Segmentierung: alle anderen Systeme nicht von außen erreichbar machen, z.B. Datenbank nur intern
+- Firewalls und Sicherheitsgruppen nutzen, um den Zugriff auf interne Systeme zu kontrollieren
+- mTLS (mutual TLS) für die Authentifizierung zwischen internen Diensten nutzen
+  - nicht jeder Service ist vertrauenswürdig, siehe Trust Boundaries
+
+## Supply Chain Security
+
+- Zunehmendes Risiko von Supply Chain Angriffen
+  - Angriffe auf Teile der Software-Lieferkette, z.B. Libraries, Container-Images, CI/CD Pipelines
+- Packages nur aus vertrauenswürdigen Quellen verwenden
+- Herkunft und Integrität prüfen: Signaturen, Provenance
+- Nicht sofort die allerneuste Version einsetzen, Updates bewusst steuern
+
+# Nächste Vorlesung
 
 - Technische Entscheidungsfindung: Trade-offs, Stakeholder & Kontext (Silas)
