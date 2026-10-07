@@ -94,7 +94,6 @@ Wikipedia:
 
 > Als System wird etwas bezeichnet, dessen Struktur aus verschiedenen Komponenten mit unterschiedlichen Eigenschaften besteht, die aufgrund bestimmter geordneter und funktionaler Beziehungen untereinander als gemeinsames Ganzes betrachtet werden (können) und so von Anderem abgrenzbar sind.
 
-
 ## Definition Softwaresystem
 
 Wikipedia:
@@ -210,7 +209,6 @@ Von Frank Klemm, [_CC BY-SA 4.0_](https://creativecommons.org/licenses/by-sa/4.0
   - Folge: Ab einem Punkt kostet jeder weitere Knoten mehr, als er bringt
 - Alltag: Ein Team mit 30 Leuten kann langsamer als eines mit 10 sein
 
-
 ## Zustand als Herausforderung
 
 - Zustandslose Komponenten lassen sich beliebig replizieren
@@ -233,14 +231,14 @@ Von Frank Klemm, [_CC BY-SA 4.0_](https://creativecommons.org/licenses/by-sa/4.0
 
 ## Latenzen, die man kennen sollte
 
-| Operation                                | Dauer (Größenordnung) |
-|------------------------------------------|----------------------:|
-| L1-Cache-Zugriff                         |                  1 ns |
-| RAM-Zugriff                              |                100 ns |
-| 1 MB sequenziell aus dem RAM lesen       |                  3 µs |
-| Zufälliger Lesezugriff auf eine SSD      |            10--100 µs |
-| Roundtrip im selben Rechenzentrum        |                0,5 ms |
-| Roundtrip Europa -- US-Westküste         |                150 ms |
+| Operation                           | Dauer (Größenordnung) |
+| ----------------------------------- | --------------------: |
+| L1-Cache-Zugriff                    |                  1 ns |
+| RAM-Zugriff                         |                100 ns |
+| 1 MB sequenziell aus dem RAM lesen  |                  3 µs |
+| Zufälliger Lesezugriff auf eine SSD |            10--100 µs |
+| Roundtrip im selben Rechenzentrum   |                0,5 ms |
+| Roundtrip Europa -- US-Westküste    |                150 ms |
 
 \rightarrow{} Ein Netzwerkaufruf kostet so viel wie tausende Speicherzugriffe
 
@@ -423,6 +421,7 @@ Nach Jeff Dean und [Colin Scott](https://colin-scott.github.io/personal_website/
 - Faustregel: Monolith wenn möglich, aufteilen, wenn nötig
 - Vertiefung in Vorlesung 5
 
+<!--
 # Systemdesign: Persistenz
 
 ## SQL
@@ -467,6 +466,7 @@ Nach Jeff Dean und [Colin Scott](https://colin-scott.github.io/personal_website/
 - **Nachteile:** zweite Datenhaltung, der Index hinkt hinterher, eigener Betrieb
 - **Alternativen:** Volltextsuche in PostgreSQL oder SQL Server
 - **Beispiele:** Elasticsearch, OpenSearch, Solr
+-->
 
 # Systemdesign: Asynchrone Kommunikation & Datenverarbeitung
 
