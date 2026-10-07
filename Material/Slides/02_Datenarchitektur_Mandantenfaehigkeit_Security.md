@@ -15,27 +15,15 @@ toc: true
 section-titles: true
 ...
 
-<!--
-Time plan: 4 VE = 180 min total: 15 min Organisatorisches, 15 min pause,
-150 min subject matter.
-  Organisatorisches                         15
-  Datenarchitektur                          60   Think-Pair-Share 6
-  Mandantenfähigkeit                        28   Gruppenphase 12
-  System-Security                           35   Think-Pair-Share 8
-  AI Engineering                             7
-  Zusammenfassung                            5
-  Sum                                      150
--->
-
 # Organisatorisches
 
 ## Heute
 
-- Datenarchitektur: Datenmodell, Transaktionen, Replikation und Partitionierung
-- Mandantenfähigkeit: Isolation ist eine Architekturentscheidung
-- System-Security: Grenzen, Identitäten und Schutzschichten
-- Durchgängiges Beispiel: Cal.diy, erweitert zum Mandanten-Teaching-Model
-- AI Engineering: Daten und Sicherheit für KI-Systeme
+- **Datenarchitektur**: Datenmodell, Transaktionen, Replikation und Partitionierung
+- **Mandantenfähigkeit**: Isolation ist eine Architekturentscheidung
+- **System-Security**: Grenzen, Identitäten und Schutzschichten
+- **Durchgängiges Beispiel**: Cal.diy, erweitert zum Mandanten-Teaching-Model
+- **AI Engineering**: Daten und Sicherheit für KI-Systeme
 
 ## Vorstellung
 
@@ -204,7 +192,7 @@ Zwei Requests prüfen "gleichzeitig" denselben freien Slot und wollen beide buch
 
 ## Doppelbuchung Ergebnis (1)
 
-![Doppelbuchung Fehler](media/doppelbuchung-fehler.png)
+![Doppelbuchung Fehler](media/doppelbuchung-fehler.png){width=65%}
 
 ## Lösung mit Transaktionen? (1)
 
@@ -217,7 +205,7 @@ Warum lösen Transaktionen das Problem der Doppelbuchung nicht garantiert?
   - Solange bei Start beider Transaktionen der Slot noch frei ist können beide ohne Verletzung von Konsistenzregeln schreiben!
 - Lösungsmöglichkeit: Höheres Isolationslevel, _aber_ Performance kann leiden
 
-## Wiederholung: Isolation Levels
+## Wiederholung: Isolation Levels (1)
 
 Isolation bestimmt, welche Auswirkungen **parallel laufender Transaktionen** sichtbar werden.
 
@@ -226,6 +214,9 @@ Isolation bestimmt, welche Auswirkungen **parallel laufender Transaktionen** sic
 | Read Committed             | Transaktion kann nur bestätigte (commitete) Änderungen sehen; zwischen zwei Operationen kann sich der Stand ändern. |
 | Repeatable Read / Snapshot | Transaktion sieht nur Änderungen, die vor Start der Transaktion commitet wurden.                                    |
 | Serializable               | Transaktionen wirken als wären sie nacheinander ausgeführt worden, keine phantom reads möglich                      |
+
+
+## Wiederholung: Isolation Levels (2)
 
 - Höhere Isolation bedeutet mehr Koordination, mögliche Abbrüche und Retries
 - Details und konkrete Namen unterscheiden sich je nach DBMS
@@ -246,7 +237,7 @@ WHERE status = 'CONFIRMED';
 
 ## Alternative Lösung: Unique Constraint (2)
 
-![Doppelbuchung Unique Index](media/doppelbuchung-unique-index.png)
+![Doppelbuchung Unique Index](media/doppelbuchung-unique-index.png){width=68%}
 
 ## Warum Konsistenzregeln in der Datenbank?
 
@@ -283,9 +274,9 @@ Eine einzelne Datenbank kann an Grenzen stoßen:
 
 ## CAP
 
-![CAP](media/cap.png)
+![CAP](media/cap.png){width=70%}
 
-> <https://medium.com/@anupchakole/understanding-the-cap-theorem-why-your-system-cant-have-it-all-4004c25e021f>
+> [CAP Theorem](https://medium.com/@anupchakole/understanding-the-cap-theorem-why-your-system-cant-have-it-all-4004c25e021f)
 
 ## BASE
 
@@ -310,7 +301,7 @@ Eine einzelne Datenbank kann an Grenzen stoßen:
 
 ## Replikation Modelle (2)
 
-![Replikation Lag](media/Replication_Lag.pdf)
+![Replikation Lag](media/Replication_Lag.pdf){height=120%}
 
 ## Replikation Modelle (3)
 
@@ -347,11 +338,11 @@ Eine einzelne Datenbank kann an Grenzen stoßen:
 
 ## Sharding Umsetzung (2)
 
-![Sharding Umsetzung](media/Sharding_Shard_Key.pdf)
+![Sharding Umsetzung](media/Sharding_Shard_Key.pdf){width=120%}
 
 ## Sharding Umsetzung (3)
 
-![Sharding Umsetzung](media/Sharding_Router.pdf)
+![Sharding Umsetzung](media/Sharding_Router.pdf){width=120%}
 
 ## Sharding Herausforderungen
 
@@ -432,7 +423,7 @@ Eine einzelne Datenbank kann an Grenzen stoßen:
 
 ## Zielbild
 
-![Zielbild](media/Zielbild_SaaS.pdf)
+![Zielbild](media/Zielbild_SaaS.pdf){height=80%}
 
 ## Von Single-Tenancy zu Multi-Tenancy (1)
 
@@ -467,7 +458,7 @@ Kein Modell gewinnt immer: Compliance, Größe, Kosten und Betrieb entscheiden.
 
 ## Silo
 
-![Silo](media/Silo_Dbs.pdf)
+![Silo](media/Silo_Dbs.pdf){height=140%}
 
 ## Pool: einfach umzusetzen, aber mit Risiken
 
@@ -482,7 +473,7 @@ booking(id, organization_id, host_id, start_time, status)
 
 ## Pool
 
-![Pool](media/Pool.pdf)
+![Pool](media/Pool.pdf){width=150%}
 
 ## Bridge: mittlere Isolation, mittlerer Aufwand
 
@@ -494,7 +485,7 @@ Auch hybride Ansätze sind verbreitet. Häufig auch Pool für Standard-Mandanten
 
 ## Bridge
 
-![Bridge](media/Bridge.pdf)
+![Bridge](media/Bridge.pdf){width=75%}
 
 ## Hybrid
 
@@ -567,13 +558,6 @@ Bewertet _Isolation_, _Kosten_, _Betrieb_, _Skalierung_ für die verschiedenen M
 
 - **Autorisierung**: Festlegung was ein Subjekt darf.
 
-## Tokens und Service-Identitäten
-
-- JSON Web Token (JWT) ist ein Tokenformat: Signatur, Aussteller, Zielgruppe und Ablaufzeit prüfen
-- Übliche signierte JWTs sind nicht verschlüsselt: keine Secrets oder sensiblen Daten in den Payload
-- Services nutzen eine eigene Identität, etwa Service Account oder Workload Identity, nicht das Token eines Nutzers
-- mTLS authentifiziert beide Enden einer Verbindung; Rechte für Aktionen bleiben eine Autorisierungsfrage
-- Kurzlebige Tokens und Rotation begrenzen den Schaden bei einem Leak
 
 ## Least Privilege – Prinzip der geringsten Rechte
 
