@@ -21,7 +21,7 @@ Time plan: 175 min teaching time; 5-minute buffer within the 180-minute teaching
   Zuverlässigkeit messbar machen              32
   Fehlerkaskaden und Stabilitätsmuster         43
   Hochverfügbarkeit und Recovery               42
-  Resilienz testen und Incident Tabletop       25
+  Resilienz testen, Tabletop und Fallbeispiel  25
   AI Engineering                               15
   Zusammenfassung und Transfer                 10
   Planned teaching                             175
@@ -537,7 +537,23 @@ Die nächste Folie vergleicht die Vorschläge; dafür ist keine zusätzliche Bes
 
 Keine Schuldzuweisung: „menschlicher Fehler“ ist keine ausreichende Ursachenanalyse.
 
-<!-- TODO: Öffentliches Postmortem für ein kurzes Lehrbeispiel auswählen; optional Ausschnitt zu Auslöser, Verstärker, Erkennung und Behebung ergänzen. -->
+## Fallbeispiel: GitHub-Ausfall im Oktober 2018
+
+- Wartungsarbeiten unterbrachen für 43 Sekunden die Verbindung zum primären US-Ostküsten-Rechenzentrum
+- Automatisches Failover machte die US-Westküste zur neuen Primary für mehrere Datenbankcluster
+- Nach Wiederherstellung der Verbindung hatten beide Regionen nicht replizierte Writes
+- Cross-Region-Latenz und inkonsistente Topologien beeinträchtigten Anwendungen weiter
+- GitHub meldete insgesamt 24 Stunden und 11 Minuten beeinträchtigten Betrieb
+
+## GitHub: Wiederherstellung und Lehren
+
+- GitHub priorisierte Datenintegrität und stoppte teilweise schreibende Hintergrundjobs
+- Restore großer MySQL-Cluster aus Backups dauerte Stunden; Replikationslag verzögerte die Rückkehr zur stabilen Topologie
+- Nach Wiederanlauf warteten über fünf Millionen Webhook-Ereignisse und 80.000 Pages-Builds
+- Maßnahmen: regionsübergreifendes Failover begrenzen, Multi-Datacenter-Redundanz ausbauen, Fehlerannahmen gezielt testen
+- Quelle: [GitHub, October 21 post-incident analysis](https://github.blog/news-insights/company-news/oct21-post-incident-analysis/)
+
+<!-- 5 min instructor-led case, within the existing 25-minute section; no additional student task or debrief time. -->
 
 # AI Engineering – Resilienz für KI-Komponenten
 
