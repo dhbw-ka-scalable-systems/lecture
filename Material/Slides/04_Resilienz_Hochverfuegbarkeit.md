@@ -16,7 +16,7 @@ section-titles: true
 ...
 
 <!--
-Time plan: 175 min teaching time; 15-minute break on top.
+Time plan: 175 min teaching time; 5-minute buffer within the 180-minute teaching slot; 15-minute break on top.
   Einstieg und Szenario                         8
   Zuverlässigkeit messbar machen              32
   Fehlerkaskaden und Stabilitätsmuster         43
@@ -24,7 +24,9 @@ Time plan: 175 min teaching time; 15-minute break on top.
   Resilienz testen und Incident Tabletop       25
   AI Engineering                               15
   Zusammenfassung und Transfer                 10
-  Sum                                          175
+  Planned teaching                             175
+  Buffer                                         5
+  Slot total                                   180
 -->
 
 # Einstieg: Wenn Abhängigkeiten ausfallen
@@ -150,20 +152,20 @@ Folgerung: Auch Erfolg braucht eine Zeitgrenze.
 Beispiel Buchungsservice:
 
 - SLI: Anteil gültiger Buchungen, die erfolgreich bestätigt werden
-- SLO: 99,5 % erfolgreicher Buchungen innerhalb von 30 Tagen
+- SLO: 99,5 % der gültigen Buchungen werden in einem rollierenden 30-Tage-Fenster innerhalb von 2 Sekunden bestätigt
 - SLA: vereinbarte Verfügbarkeit und Folgen bei Nichterfüllung
 
 ## Ein gutes SLI braucht klare Ereignisse
 
 - Nenner: gültige Buchungsanfragen, die der Dienst tatsächlich bearbeiten soll
-- Gutes Ereignis: Buchung innerhalb des vereinbarten Zeitlimits bestätigt
+- Gutes Ereignis: Buchung innerhalb der vereinbarten Antwortfrist bestätigt
 - Ungutes Ereignis: Fehler oder Antwort nach Ablauf des Zeitlimits
 - Ungültige Eingaben gehören nicht in den Nenner eines Verfügbarkeits-SLI
 - Slot-Suche und Buchung getrennt messen: Nutzer erleben verschiedene Funktionen
 
 ## Error Budget konkret berechnen
 
-- SLO: 99,5 % erfolgreiche Buchungen in einem rollierenden 30-Tage-Fenster
+- SLO: 99,5 % der gültigen Buchungen innerhalb von 2 Sekunden in einem rollierenden 30-Tage-Fenster
 - 100.000 gültige Anfragen → höchstens 500 dürfen fehlschlagen oder zu spät sein
 - 650 schlechte Ereignisse → SLI 99,35 %, Budget um 150 Ereignisse überschritten
 - Verspätete Kalender-Synchronisation zählt nur beim Sync-SLI als Fehler
@@ -173,19 +175,21 @@ Beispiel Buchungsservice:
 
 **Arbeitszeit: 6 Minuten — 2 allein, 2 zu zweit, 2 im Plenum**
 
-Für die Slot-Suche und Kalender-Synchronisation:
+Für die Buchungsbestätigung:
 
-1. Welche Messgröße bildet die Nutzererfahrung ab?
-2. Welches Zeitfenster und welcher Zielwert wären sinnvoll?
-3. Muss ein verspätetes Kalender-Update die Buchung als fehlgeschlagen zählen?
+1. Was zählt als gültige Anfrage und als Erfolg?
+2. Welche Antwortfrist und welches Messfenster wählt ihr?
+3. Gehört die Kalender-Synchronisation in dieses SLI oder braucht sie ein eigenes?
 
-Ergebnis: je Funktion ein SLI und ein begründeter Zielwert.
+Ergebnis: ein SLI mit begründetem Zielwert; die Sync-Funktion wird als eigenes SLI abgegrenzt.
 
 ## Error Budget und Verfügbarkeit
 
 - Error Budget = tolerierte Abweichung vom SLO
 - Bei 99,5 % erfolgreicher Buchungen dürfen 0,5 % fehlschlagen
 - Ist das Budget aufgebraucht, können Stabilisierung und Ursachenbehebung Vorrang erhalten
+
+Zeitbasiertes Availability-SLI, unabhängig vom requestbasierten Buchungs-SLI:
 
 | Verfügbarkeit | Ausfallzeit pro Jahr, ungefähr |
 |---:|---:|
@@ -216,13 +220,16 @@ Bleibt ein überlastetes System auch nach Ende des Auslösers instabil, spricht 
 Im Kalender-Szenario:
 
 1. Welche Ressource wird zuerst knapp?
-2. Welche Maßnahme schützt die lokale Buchung am wirksamsten?
+2. Welche eine Maßnahme würdet ihr zuerst einsetzen?
 3. Was sollte für den Nutzer weiterhin funktionieren?
+
+Die spätere Mustersynthese greift die vorgeschlagene Maßnahme wieder auf.
 
 ## Timeouts und Deadlines
 
 - Jeder Netzwerkaufruf braucht ein begrenztes Zeitbudget
-- Timeout gibt Ressourcen frei und macht Fehler sichtbar
+- Timeout begrenzt das Warten und macht Fehler sichtbar
+- Ressourcen werden nur freigegeben, wenn Abbruch/Deadline bis zur Arbeit weitergereicht wird
 - Deadline begrenzt die Gesamtdauer eines Requests
 - Unteraufrufe erhalten nur die verbleibende Zeit
 - Ein Timeout löst noch nicht die fachliche Folge des Fehlers
@@ -312,7 +319,7 @@ HalfOpen --> Open : Testaufruf fehlgeschlagen
 ## Bulkheads, Backpressure und Lastbegrenzung
 
 - **Bulkhead:** Ressourcen nach Abhängigkeit oder Funktion trennen
-- Beispiel: eigener Worker-Pool und begrenzte Queue für Kalender-Webhooks
+- Beispiel: eigener Worker-Pool und begrenzte Queue für ausgehende Kalender-Synchronisation
 - **Backpressure:** begrenzte Verarbeitungskapazität an den Erzeuger zurückmelden
 - **Load Shedding:** weniger wichtige Arbeit kontrolliert ablehnen oder pausieren
 - Rate Limits und Quotas pro Mandant begrenzen Noisy Neighbours (Bezug Vorlesung 2)
@@ -372,9 +379,9 @@ Zwei App-Instanzen stehen im selben Rechenzentrum und nutzen denselben Load Bala
 - Mehrere App-Instanzen hinter einem Load Balancer
 - Instanzen enthalten keinen wichtigen, nur lokal gespeicherten Zustand
 - Sessions sind geteilt oder signiert; Dateien liegen nicht nur auf lokaler Platte
-- **Liveness:** Prozess muss laufen; bei Fehler ggf. neu starten
+- **Liveness:** erkennt einen festgefahrenen Prozess; bei Fehler ggf. neu starten
 - **Readiness:** Instanz kann Traffic annehmen; sonst aus Rotation nehmen
-- Optionale Abhängigkeiten nicht blind in Readiness einbeziehen
+- Temporäre Kalender-Ausfälle nicht als Liveness-Fehler behandeln; Readiness nur an notwendigen Abhängigkeiten ausrichten
 
 ```plantuml
 @startuml
@@ -392,6 +399,8 @@ App2 --> DB
 @enduml
 ```
 
+- Das Diagramm zeigt redundante App-Instanzen; Load Balancer und Datenbank bleiben gemeinsame Abhängigkeiten
+
 ## Datenbank-Replikation: Verfügbarkeit mit Nebenwirkungen
 
 - Primary verarbeitet Writes; Replica kann Reads bedienen oder auf Failover warten
@@ -404,11 +413,19 @@ App2 --> DB
 
 | Replikation | Backup |
 |---|---|
-| hält Kopien auf aktuellem Stand | bewahrt historische Wiederherstellungspunkte |
+| hält Kopien je nach Verfahren synchron oder mit Verzögerung aktuell | bewahrt historische Wiederherstellungspunkte |
 | hilft bei Ausfall einer Instanz | hilft bei Löschung oder Beschädigung |
 | kann Fehler sofort mitkopieren | erlaubt Rückkehr zu früherem Datenstand |
 
 - Beides kann nötig sein; Restore muss regelmäßig getestet werden
+
+## RTO und RPO bestimmen Recovery
+
+- **RTO (Recovery Time Objective):** maximal akzeptable Wiederherstellungsdauer
+- **RPO (Recovery Point Objective):** maximal akzeptabler Datenverlust
+- Beispiel: RTO 60 Minuten, RPO 5 Minuten
+- Restore-Zeit und wiederhergestellter Datenstand müssen die Ziele erfüllen
+- Schlüssel, Konfiguration, Verantwortlichkeiten und Runbooks gehören zum Restore
 
 ## Recovery-Ziele an einem Vorfall prüfen
 
@@ -424,7 +441,7 @@ App2 --> DB
 2. Replica promoten oder Backup wiederherstellen
 3. Verbindungen, Secrets und Schreibpfad umschalten
 4. Integrität und Datenstand prüfen; Anwendung kontrolliert freigeben
-- RTO umfasst Erkennung, Entscheidung, Umschaltung und Prüfung
+- Diese Schritte gehen vollständig ins RTO ein: Erkennung, Entscheidung, Umschaltung und Prüfung
 - Regelmäßige Übung misst echte Dauer und deckt fehlende Schritte auf
 
 ## Failover oder Restore?
@@ -437,14 +454,6 @@ App2 --> DB
 | Schadsoftware/Replikation von Schaden | isoliertes Backup | Wiederherstellung und saubere Umgebung |
 
 Failover stellt den Dienst wieder bereit; Restore stellt einen früheren Datenstand wieder her.
-
-## RTO und RPO bestimmen Recovery
-
-- **RTO (Recovery Time Objective):** maximal akzeptable Wiederherstellungsdauer
-- **RPO (Recovery Point Objective):** maximal akzeptabler Datenverlust
-- Beispiel: RTO 60 Minuten, RPO 5 Minuten
-- Restore-Zeit und wiederhergestellter Datenstand müssen die Ziele erfüllen
-- Schlüssel, Konfiguration, Verantwortlichkeiten und Runbooks gehören zum Restore
 
 ## Disaster Recovery und Ende-zu-Ende-Verfügbarkeit
 
@@ -508,6 +517,7 @@ Situation: Die API benötigt 20 Sekunden; Buchungs-API wird langsamer, Queue wä
 4. Nennt eine dauerhafte Verbesserung.
 
 Ergebnis: vier Stichpunkte, keine vollständige Architektur.
+Die nächste Folie vergleicht die Vorschläge; dafür ist keine zusätzliche Besprechungszeit vorgesehen.
 
 ## Auswertung: Schutzwirkung sichtbar machen
 
