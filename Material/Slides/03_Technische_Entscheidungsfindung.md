@@ -20,10 +20,7 @@ section-titles: true
 ## Heute
 
 - Rückblick und offene Themen aus Vorlesung 1 und 2
-- **Aufgabe 1:** ein System entwerfen, mit oder ohne KI
-- Warum Entscheidungen der Kern von Architektur sind
-- Qualitätsattribute, Trade-offs, Stakeholder und Kontext
-- Methoden: ADRs, Optionsvergleich, Experimente
+- Inhalt
 - **Aufgabe 2:** noch einmal ein System entwerfen, mit dem Werkzeugkasten von heute
 
 ## Lernziele
@@ -39,7 +36,7 @@ section-titles: true
 ## Aufgabe 1: Anmeldesystem für Lehrveranstaltungen
 
 - Unter www.dhbw-anmeldesystem-lehrveranstaltung.de können sich Studierende für Lehrveranstaltungen anmelden
-- wird für alle neun DHBW-Standorte verwendet, jeder mit eigenem Prüfungsamt und eigenem Stichtag
+- Wird für alle neun DHBW-Standorte verwendet, jeder mit eigenem Prüfungsamt und eigenem Stichtag
 - Pro Standort rund 6.000 Studierende, die Anmeldung öffnet zu einem festen Zeitpunkt
 - In den ersten fünf Minuten melden sich rund 80 % an
 - Plätze sind begrenzt, eine Überbuchung ist nicht zulässig; danach kommt eine Bestätigung per E-Mail
@@ -133,6 +130,7 @@ P -right-> M : at-least-once
 
 - Erstes Gesetz der Softwarearchitektur: Alles ist ein Trade-off
 - Zweites Gesetz: Das Warum ist wichtiger als das Wie
+
 - "Best Practice" ohne Kontext ist eine Meinung
 - Die Aufgabe: Optionen sichtbar machen und bewusst wählen
 - Wer keinen Nachteil seiner Lösung nennen kann, hat die Alternativen nicht verstanden
@@ -160,6 +158,7 @@ P -right-> M : at-least-once
 - Opportunitätskosten: Was bauen wir dafür nicht?
 - Kosten des Nicht-Entscheidens: Drift, implizite Entscheidungen durch den Code
 - Jede Entscheidung erzeugt Folgeentscheidungen für andere
+
 - Beispiel Kafka: Lizenz 0 €, aber zwei Wochen Lernkurve, ein Betriebsthema mehr, und nachts muss jemand ran
 
 ## Architecture Advice Process (Softwarearchitektur Dezentral leben)
@@ -168,7 +167,8 @@ P -right-> M : at-least-once
 - Pflicht vorher: alle Betroffenen und erfahrene Personen zum Thema **anhören**
 - Der Rat ist verbindlich einzuholen, aber nicht verbindlich zu befolgen
 - Die Entscheidung und der eingeholte Rat werden dokumentiert (ADR)
-- Wirkung: schnelle Entscheidungen ohne zentralen Flaschenhals, trotzdem nachvollziehbar
+
+\rightarrow{} schnelle Entscheidungen ohne zentralen Flaschenhals, trotzdem nachvollziehbar
 
 ## Entscheiden in der Gruppe
 
@@ -181,11 +181,11 @@ P -right-> M : at-least-once
 
 ## Kognitive Verzerrungen
 
-- Sunk Cost: "Wir haben schon so viel investiert" ist kein Argument für die Zukunft
-- Anchoring: Die erste genannte Option bestimmt den Rahmen der Diskussion
-- Authority Bias und HiPPO: die Meinung der höchstbezahlten Person im Raum
-- Bandwagon: Netflix macht das auch (...nur lösen die damit andere Probleme)
-- Confirmation Bias: wir suchen Belege für die Lösung, die wir schon wollten
+- **Sunk Cost**: "Wir haben schon so viel investiert" ist kein Argument für die Zukunft
+- **Anchoring**: Die erste genannte Option bestimmt den Rahmen der Diskussion
+- **Authority Bias**: die Meinung der höchstbezahlten Person im Raum
+- **Bandwagon**: Netflix macht das auch (...nur lösen die damit andere Probleme)
+- **Confirmation Bias**: wir suchen Belege für die Lösung, die wir schon wollten
 
 - Gegenmaßnahme: Optionen parallel bewerten, Gegenargumente einfordern, Annahmen aufschreiben
 - Rückblick zu Aufgabe 1: Welche davon habt ihr in eurer Gruppe erlebt?
@@ -194,7 +194,8 @@ P -right-> M : at-least-once
 
 ## Von der vagen Anforderung zum prüfbaren Kriterium
 
-- "Das System muss performant sein" ist keine Anforderung, sondern ein Wunsch
+"Das System muss performant sein" ist keine Anforderung, sondern ein Wunsch
+
 - Die vier Fragen: Wann? Unter welchen Bedingungen? Was genau passiert? Woran messen wir es?
 - Was kein Maß hat, lässt sich weder entscheiden noch abnehmen
 - Was nicht gemessen wird, wird im Betrieb zufällig erfüllt oder nicht
@@ -202,22 +203,24 @@ P -right-> M : at-least-once
 
 ## Quality Attribute Scenarios
 
-- AQuelle, Auslöser, Artefakt, Umgebung, Reaktion, Maß
-- Vage: "Die Anmeldung muss schnell sein" und "Es darf nichts schiefgehen"
-- Prüfbar: "Melden sich 80 % der 6.000 Studierenden in den ersten 5 Minuten an, beantwortet das System 95 % der Anfragen in unter 800 ms"
+Quelle, Auslöser, Artefakt, Umgebung, Reaktion, Maß
+
+- **Vage**: "Die Anmeldung muss schnell sein" und "Es darf nichts schiefgehen"
+- **Prüfbar**: "Melden sich 80 % der 6.000 Studierenden in den ersten 5 Minuten an, beantwortet das System 95 % der Anfragen in unter 800 ms"
+
 - Ein Szenario pro Attribut: Performance und Konsistenz getrennt, sonst ist das Maß nicht prüfbar
 - Daraus folgen Architekturoptionen: Cache für die Kursliste, Constraint in der Datenbank, Vorabreservierung
 
 ## Zwei Szenarien zerlegt
 
-| Teil     | Performance                 | Konsistenz                             |
-| -------- | --------------------------- | -------------------------------------- |
-| Quelle   | 4.800 Studierende           | zwei Studierende gleichzeitig          |
-| Auslöser | melden sich in 5 Minuten an | wollen den letzten Platz               |
-| Artefakt | Anmeldedienst               | Platzvergabe                           |
-| Umgebung | Stichtag, Normalbetrieb     | parallele Requests                     |
-| Reaktion | Antwort                     | einer den Platz, der andere die Absage |
-| Maß      | 95 % unter 800 ms           | 0 Überbuchungen, im Lasttest geprüft   |
+| Teil         | Performance                 | Konsistenz                             |
+| ------------ | --------------------------- | -------------------------------------- |
+| **Quelle**   | 4.800 Studierende           | zwei Studierende gleichzeitig          |
+| **Auslöser** | melden sich in 5 Minuten an | wollen den letzten Platz               |
+| **Artefakt** | Anmeldedienst               | Platzvergabe                           |
+| **Umgebung** | Stichtag, Normalbetrieb     | parallele Requests                     |
+| **Reaktion** | Antwort                     | einer den Platz, der andere die Absage |
+| **Maß**      | 95 % unter 800 ms           | 0 Überbuchungen, im Lasttest geprüft   |
 
 \rightarrow{} jede Zelle ist eine Entscheidungsgrundlage
 
@@ -225,10 +228,10 @@ P -right-> M : at-least-once
 
 Automatisierte Prüfung von Architektureigenschaften, z. B.
 
-- Abhängigkeiten: ArchUnit oder Linter-Regel, "die Domänenschicht importiert nichts aus der Infrastruktur"
-- Performance: Lasttest in der Pipeline, Build rot bei p95 über 800 ms
-- Sicherheit: Dependency-Scan, kein Deployment mit bekannter kritischer Lücke
-- Kosten: Alarm, wenn die monatlichen Cloud-Kosten den Schwellwert überschreiten
+- **Abhängigkeiten**: ArchUnit oder Linter-Regel, "die Domänenschicht importiert nichts aus der Infrastruktur"
+- **Performance**: Lasttest in der Pipeline, Build rot bei p95 über 800 ms
+- **Sicherheit**: Dependency-Scan, kein Deployment mit bekannter kritischer Lücke
+- **Kosten**: Alarm, wenn die monatlichen Cloud-Kosten den Schwellwert überschreiten
 
 \rightarrow{} Die Entscheidung bleibt gültig, auch wenn niemand mehr an sie denkt
 
@@ -243,21 +246,21 @@ Automatisierte Prüfung von Architektureigenschaften, z. B.
 
 ## Trade-off-Analyse
 
-- Qualitativ vor quantitativ: erst die Dimensionen finden (Betrieb, Skills, Latenz), dann messen, was messbar ist
-- Kriterien überschneidungsfrei und vollständig: "Performance" ist Teil von "Skalierbarkeit"
-- Die Out-of-Context-Falle: "Kafka ist schneller als RabbitMQ" gilt nur für den gemessenen Fall
-- Relevante Domänenfälle modellieren: nicht "Queue oder Log", sondern "Bestätigungsmail nach der Anmeldung"
-- Vorsicht vor Evangelisten und Wundermitteln: Wer nur eine Antwort kennt, hat die Frage nicht gehört
+- **Qualitativ vor quantitativ**: erst die Dimensionen finden (Betrieb, Skills, Latenz), dann messen, was messbar ist
+- **Kriterien überschneidungsfrei und vollständig**: "Performance" ist Teil von "Skalierbarkeit"
+- **Die Out-of-Context-Falle**: "Kafka ist schneller als RabbitMQ" gilt nur für den gemessenen Fall
+- **Relevante Domänenfälle modellieren**: nicht "Queue oder Log", sondern "Bestätigungsmail nach der Anmeldung"
+- **Vorsicht vor Evangelisten und Wundermitteln**: Wer nur eine Antwort kennt, hat die Frage nicht gehört
 
 # Stakeholder und Kontext
 
 ## Wer entscheidet mit?
 
-- Business und Produkt: Ziele, Budget, Zeit
-- Entwicklung: Umsetzbarkeit, Skills, Motivation
-- Betrieb: Betreibbarkeit, On-Call, Kosten
-- Security und Recht: Compliance, Risiko
-- Endnutzer: die eigentlichen Anforderungen
+- **Business und Produkt**: Ziele, Budget, Zeit
+- **Entwicklung**: Umsetzbarkeit, Skills, Motivation
+- **Betrieb**: Betreibbarkeit, On-Call, Kosten
+- **Security und Recht**: Compliance, Risiko
+- **Endnutzer**: die eigentlichen Anforderungen
 
 \rightarrow{} Stakeholder-Map zeigt Einfluss und Interesse
 
@@ -272,12 +275,12 @@ Automatisierte Prüfung von Architektureigenschaften, z. B.
 
 ## Kontextfaktoren
 
-- Entwicklunfgsteam: Größe, Skills, Erfahrung, Fluktuation
-- Organisation: Art der Zusammenarbeit und Entscheidungswege
-- Bestand: Legacy-Systeme, Verträge, vorhandene Plattformen
-- Regulatorik und Branche
-- Zeit und Budget
-- Zukunft: erwartetes Wachstum, Lebensdauer des Systems
+- **Entwicklungsteam**: Größe, Skills, Erfahrung, Fluktuation
+- **Organisation**: Art der Zusammenarbeit und Entscheidungswege
+- **Bestand**: Legacy-Systeme, Verträge, vorhandene Plattformen
+- **Regulatorik und Branche**
+- **Zeit und Budget**
+- **Zukunft**: erwartetes Wachstum, Lebensdauer des Systems
 
 \rightarrow{} Managed Datenbank? Startup: ja. Bank mit Datenresidenz-Auflage: nein. Konzern mit DB-Team: vielleicht. Dieselbe Frage, andere Antwort
 
@@ -339,7 +342,7 @@ Größenordnungen über drei Jahre, eine mittlere Postgres-Instanz
 - **Entscheidung:** was wir tun und warum genau das
 - **Konsequenzen:** positiv, negativ, offene Punkte, wann wir neu schauen
 
-## ADR-0007: Kontext und Optionen
+## ADR-0007: Titel und Kontext
 
 **Bestätigungsmail asynchron versenden** (Status: akzeptiert)
 
@@ -350,7 +353,7 @@ Größenordnungen über drei Jahre, eine mittlere Postgres-Instanz
 - Eine Anmeldung darf nicht fehlschlagen, weil der Mailversand klemmt
 - Vier Entwickler, kein Kafka-Know-how, PostgreSQL ist gesetzt
 
-### Betrachtete Optionen
+## ADR-0007: Betrachtete Optionen
 
 1. Synchroner Aufruf im Request
 2. Message Queue (RabbitMQ oder SQS) mit eigenem Worker
@@ -508,8 +511,6 @@ API -right-> IX : Rechte geprüft
 - Rechte: Monteur sieht nur eigene Einsätze, geprüft in der API, nicht in der App
 - Texterkennung austauschbar: erst klassische OCR, ein LLM nur, wenn es gemessen besser ist
 - Bewusst nicht: Komprimierung beim Client, Verarbeitung synchron im Upload, Fotos in der Datenbank; Annahme: Fotos verlassen das Rechenzentrum nicht
-
-# Zusammenfassung
 
 ## Zusammenfassung
 
