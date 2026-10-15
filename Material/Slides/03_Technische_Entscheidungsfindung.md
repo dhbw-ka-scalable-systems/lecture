@@ -470,8 +470,6 @@ verschickt sie. Kein neues System, kein Mailversand im Request.
 
 ## Aufgabe 2: eine mögliche Lösung
 
-<!-- Erst nach den Präsentationen zeigen, als Vergleichsbild. -->
-
 ```{.plantuml height=85%}
 @startuml
 left to right direction
