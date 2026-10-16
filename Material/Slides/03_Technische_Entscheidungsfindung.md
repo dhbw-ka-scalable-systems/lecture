@@ -25,11 +25,10 @@ section-titles: true
 
 ## Lernziele
 
-- Architekturentscheidungen von Implementierungsentscheidungen unterscheiden
-- Trade-offs zwischen Qualitätsattributen erkennen und explizit machen
+- Architekturentscheidungen vs. Implementierungsentscheidungen
+- Trade-offs erkennen und explizit machen
 - Stakeholder und Kontextfaktoren identifizieren und in die Entscheidung einbeziehen
 - Eine Entscheidung strukturiert herleiten, dokumentieren und kommunizieren
-- Eine KI-Unterstützung so einsetzen, dass die Entscheidung bei euch bleibt
 
 # Aufgabe 1
 
@@ -65,7 +64,6 @@ section-titles: true
 ## Aufgabe 1: Besprechung
 
 - Welche Entscheidungen wurden explizit getroffen und diskutiert, welche sind einfach passiert?
-- Welche Begründungen tragen, welche sind "best practice"?
 - Wo wurde gerechnet, wo geraten?
 - Die Rechnung: 6.000 × 80 % in 300 Sekunden sind 16 Anmeldungen pro Sekunde; die Spitze machen die Requests, nicht die Anmeldungen
 - Ein System oder neun? Wer hat das entschieden, und mit welcher Begründung?
@@ -99,22 +97,22 @@ P -right-> M : at-least-once
 
 ## Aufgabe 1: die Entscheidungen dahinter
 
-- Lesen skalieren, Schreiben einfach halten: 16 Anmeldungen pro Sekunde brauchen keine Queue, die Seitenaufrufe brauchen CDN und Cache
-- Ein System für neun Standorte: Pool-Modell, Standort als Tenant-ID in jeder Tabelle, erzwungen im Tenant Context
+- Lesen skalieren, Schreiben einfach halten: keine Queue, aber CDN und Cache
+- Ein System für neun Standorte: Pool-Modell, Standort als Tenant-ID in jeder Tabelle
 - Keine Überbuchung: Constraint in der Datenbank, keine Replizierung der Datenbank
 - Bewusst nicht: Silo je Standort, Microservices, NoSQL, Queue vor der Vergabe
-- Annahmen: Die Stichtage verteilen sich über Wochen, die Mail darf eine Minute später kommen
+- Annahmen: Die Stichtage verteilen sich, die Mail darf eine Minute später kommen
 
 # Architektur heißt entscheiden
 
 ## Was ist eine Architekturentscheidung?
 
-1. Wir nutzen PostgreSQL statt MongoDB
-2. Wir formatieren Code mit Prettier
-3. Die Bestätigungsmail wird asynchron verschickt
-4. Wir benennen Tabellen im Singular
-5. Authentifizierung läuft über einen externen Identity Provider
-6. Wir verwenden React statt Vue
+1. PostgreSQL oder MongoDB
+2. Code mit Prettier formatieren
+3. Bestätigungsmail asynchron versenden
+4. Tabellen im Singular benennen
+5. Authentifizierung über externen Identity Provider
+6. React oder Vue
 
 ## Was ist eine Architekturentscheidung?
 
@@ -137,7 +135,8 @@ P -right-> M : at-least-once
 
 ## Reversibilität
 
-- Irreversible Entscheidungen verdienen Zeit, reversible verdienen Tempo
+Irreversible Entscheidungen verdienen Zeit, reversible verdienen Tempo
+
 - Last Responsible Moment: so spät wie möglich entscheiden, aber nicht später
 - Reversibilität herstellen: Abstraktionen, Standards, Daten exportierbar halten
 - Typischer Fehler: alle Entscheidungen gleich schwer nehmen und dadurch gar nicht entscheiden
@@ -153,11 +152,10 @@ P -right-> M : at-least-once
 
 ## Kosten einer Entscheidung
 
-- Direkte Kosten: Zeit, Geld, Lizenzen
+- Direkte Kosten: Zeit und Geld
 - Indirekte Kosten: Komplexität, Lernkurve, Betrieb, Lock-in
 - Opportunitätskosten: Was bauen wir dafür nicht?
 - Kosten des Nicht-Entscheidens: Drift, implizite Entscheidungen durch den Code
-- Jede Entscheidung erzeugt Folgeentscheidungen für andere
 
 - Beispiel Kafka: Lizenz 0 €, aber zwei Wochen Lernkurve, ein Betriebsthema mehr, und nachts muss jemand ran
 
@@ -172,11 +170,11 @@ P -right-> M : at-least-once
 
 ## Entscheiden in der Gruppe
 
-- Konsens: alle sind dafür \rightarrow{} teuer, langsam, oft der kleinste gemeinsame Nenner
-- Konsent: niemand hat einen schwerwiegenden Einwand \rightarrow{} meist der bessere Modus
-- Disagree and commit: die Entscheidung tragen, auch wenn man anderer Meinung war
-- Rollen klären, bevor diskutiert wird: Wer entscheidet, wer berät, wer ist betroffen?
+- **Konsens**: alle sind dafür \rightarrow{} teuer, langsam, oft der kleinste gemeinsame Nenner
+- **Konsent**: niemand hat einen schwerwiegenden Einwand \rightarrow{} meist der bessere Modus
+- **Disagree and commit**: die Entscheidung tragen, auch wenn man anderer Meinung war
 
+- Rollen klären, bevor diskutiert wird: Wer entscheidet, wer berät, wer ist betroffen?
 - Antipattern: Design by Committee: jeder bekommt sein Feature in die Architektur, das Ergebnis trägt niemand
 
 ## Kognitive Verzerrungen
@@ -187,8 +185,7 @@ P -right-> M : at-least-once
 - **Bandwagon**: Netflix macht das auch (...nur lösen die damit andere Probleme)
 - **Confirmation Bias**: wir suchen Belege für die Lösung, die wir schon wollten
 
-- Gegenmaßnahme: Optionen parallel bewerten, Gegenargumente einfordern, Annahmen aufschreiben
-- Rückblick zu Aufgabe 1: Welche davon habt ihr in eurer Gruppe erlebt?
+Gegenmaßnahme: Optionen parallel bewerten, Gegenargumente einfordern, Annahmen aufschreiben
 
 # Qualitätsattribute und Trade-offs
 
@@ -196,10 +193,10 @@ P -right-> M : at-least-once
 
 "Das System muss performant sein" ist keine Anforderung, sondern ein Wunsch
 
-- Die vier Fragen: Wann? Unter welchen Bedingungen? Was genau passiert? Woran messen wir es?
-- Was kein Maß hat, lässt sich weder entscheiden noch abnehmen
-- Was nicht gemessen wird, wird im Betrieb zufällig erfüllt oder nicht
-- Das Team darf die Zahl vorschlagen, bestätigen muss sie der Stakeholder, der mit der Folge lebt
+- Wann? Unter welchen Bedingungen? Was genau passiert? Woran messen wir es?
+
+\rightarrow{} Was kein Maß hat, lässt sich weder entscheiden noch abnehmen
+\rightarrow{} Was nicht gemessen wird, wird im Betrieb zufällig erfüllt oder nicht
 
 ## Quality Attribute Scenarios
 
@@ -228,21 +225,21 @@ Quelle, Auslöser, Artefakt, Umgebung, Reaktion, Maß
 
 Automatisierte Prüfung von Architektureigenschaften, z. B.
 
-- **Abhängigkeiten**: ArchUnit oder Linter-Regel, "die Domänenschicht importiert nichts aus der Infrastruktur"
-- **Performance**: Lasttest in der Pipeline, Build rot bei p95 über 800 ms
-- **Sicherheit**: Dependency-Scan, kein Deployment mit bekannter kritischer Lücke
-- **Kosten**: Alarm, wenn die monatlichen Cloud-Kosten den Schwellwert überschreiten
+- **Abhängigkeiten**: z. B. ArchUnit oder Linter-Regel ("die Domänenschicht importiert nichts aus der Infrastruktur")
+- **Performance**: z. B. Lasttest in der Pipeline, Build rot bei p95 über 800 ms
+- **Sicherheit**: z. B. Dependency-Scan
+- **Kosten**: z. B. Alarm für Cloud-Kosten
 
 \rightarrow{} Die Entscheidung bleibt gültig, auch wenn niemand mehr an sie denkt
 
 ## Typische Konflikte
 
+- Sicherheit vs. Benutzbarkeit
 - Konsistenz vs. Verfügbarkeit
 - Latenz vs. Durchsatz
 - Flexibilität vs. Einfachheit
 - Time-to-Market vs. Wartbarkeit
 - Kosten vs. Resilienz
-- Sicherheit vs. Benutzbarkeit
 
 ## Trade-off-Analyse
 
@@ -250,7 +247,7 @@ Automatisierte Prüfung von Architektureigenschaften, z. B.
 - **Kriterien überschneidungsfrei und vollständig**: "Performance" ist Teil von "Skalierbarkeit"
 - **Die Out-of-Context-Falle**: "Kafka ist schneller als RabbitMQ" gilt nur für den gemessenen Fall
 - **Relevante Domänenfälle modellieren**: nicht "Queue oder Log", sondern "Bestätigungsmail nach der Anmeldung"
-- **Vorsicht vor Evangelisten und Wundermitteln**: Wer nur eine Antwort kennt, hat die Frage nicht gehört
+- **Vorsicht vor Evangelisten und Wundermitteln**: Wer nur eine Antwort kennt, hat eventuell keine Ahnung
 
 # Stakeholder und Kontext
 
@@ -312,24 +309,26 @@ Größenordnungen über drei Jahre, eine mittlere Postgres-Instanz
 - Jedes neue Werkzeug kostet dauerhaft Aufmerksamkeit des Teams
 - "Choose Boring Technology": Innovationsbudget bewusst einsetzen
 - Hype-Zyklen erkennen: CV-Driven Development
-- Wann neue Technologie trotzdem richtig ist: wenn sie ein Problem löst, das ihr wirklich habt
+
+\rightarrow{} Neue Technologie nur dann, wenn sie ein Problem löst, das ihr wirklich habt
 
 # Entscheidungen dokumentieren
 
 ## Architecture Decision Records (ADRs)
 
-- Ein kurzes Dokument pro Entscheidung: Kontext, Optionen, Entscheidung, Konsequenzen
-- Status und Lebenszyklus: vorgeschlagen, akzeptiert, abgelöst
+- Ein kurzes Dokument pro Entscheidung
 - Versioniert, in der Sprache des Teams
-- Eine Seite, nicht zehn: Was nicht auf eine Seite passt, ist mehrere Entscheidungen
-- Wert: Das Warum bleibt erhalten, auch wenn das Team wechselt
+- Was nicht auf eine Seite passt, sind mehrere Entscheidungen
+- Das Warum bleibt erhalten, auch wenn das Team wechselt
 
 ## Anti-Patterns beim Entscheiden
 
 - **Covering Your Assets:** aus Angst, falsch zu liegen, wird gar nicht oder zu spät entschieden
   - Gegenmaßnahme: Last Responsible Moment, Entscheidung mit Überprüfungstermin
+
 - **Groundhog Day:** dieselbe Entscheidung wird alle paar Monate neu diskutiert, weil niemand das Warum kennt
   - Gegenmaßnahme: ADR mit Kontext und verworfenen Optionen
+
 - **Email-Driven Architecture:** die Entscheidung steht in einer Mail, die niemand mehr findet
   - Gegenmaßnahme: ein Ort für Entscheidungen, im Repository, in Confluence, verlinkt statt kopiert
 
@@ -413,20 +412,31 @@ verschickt sie. Kein neues System, kein Mailversand im Request.
 
 ## Entscheidungen kommunizieren
 
-- Diagramme als Kommunikationsmittel: C4-Modell (Kontext, Container, Komponenten)
-- Dokumentation mit Struktur: arc42
-- Entscheidung erklären, nicht verkünden: Wer das Warum kennt, kann im Zweifel richtig weiterentscheiden
-- Zielgruppengerecht: Management bekommt Wirkung und Kosten, das Team bekommt die Begründung, z. B. bei ADR-0007:
-  - fürs Management: "Die Anmeldung bleibt bei Mail-Ausfall nutzbar, Mails kommen bis zu einer Minute später"
-  - fürs Team: Outbox, Poller, at-least-once
+- Diagramme als Kommunikationsmittel
+- Dokumentation mit Struktur, z. B. arc42
+- Entscheidung erklären, nicht verkünden
+  - Wer das Warum kennt, kann im Zweifel richtig weiterentscheiden
+
+## Entscheidungen Zielgruppengerecht kommunizieren (2)
+
+- Das Management bekommt die Wirkung und Kosten
+  - "Die Anmeldung bleibt bei Mail-Ausfall nutzbar, Mails kommen bis zu einer Minute später"
+
+- Das Team bekommt die Begründung, z. B. bei ADR-0007:
+  - Outbox, Poller, at-least-once
 
 ## KI als Werkzeug im Entscheidungsprozess
 
 - LLMs für Optionsanalyse, ADR-Entwürfe, Recherche, Gegenargumente
-- Grenzen: Halluzinationen, Bias zum Mainstream, zunächst kein Wissen über eure Organisation und euren Bestand
-- Das Modell kennt den Durchschnitt des Internets, nicht euren Kontext \rightarrow{} Kontext entscheidet
-- Die Entscheidung bleibt beim Menschen: Verantwortung und Begründung sind nicht delegierbar
-- Gute Praxis: Kontext geben, mehrere Optionen und Gegenargumente verlangen, Quellen prüfen
+- Kognitive Verzerrungen treffen auch bei Verwendung von KI zu!
+
+Grenzen:
+
+- Halluzinationen, Bias zum Mainstream
+- **Kontext entscheidet**: Das Modell kennt den Durchschnitt des Internets, nicht euren Kontext
+- Verantwortung und Begründung bleibt beim Menschen
+
+\rightarrow{} Kontext geben, mehrere Optionen und Gegenargumente verlangen, Quellen prüfen
 
 ## Zurück zu Aufgabe 1: Was hat die KI entschieden?
 
