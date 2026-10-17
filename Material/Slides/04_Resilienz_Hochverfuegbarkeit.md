@@ -18,8 +18,8 @@ section-titles: true
 <!--
 Time plan: 4 VE = 180 min content, Friday 8:30-11:45 with a 15 min break on top.
   Heute, Lernziele                         5
-  Grundlagen                              30   includes Cal.diy teaching model
-  Redundanz und Hochverfügbarkeit         30   includes capacity reserve and split brain
+  Grundlagen                              35   includes Cal.diy teaching model and worked booking SLI/SLO
+  Redundanz und Hochverfügbarkeit         25   includes capacity reserve and split brain
   Resilienz-Muster                        60   includes retry sequence and failure cascades
   Resilienz testen                        35   2 slides + post-mortem case ~10 + example ~12
   AI Engineering                          15
@@ -91,6 +91,23 @@ Worker --> External : nachgelagert übertragen
 - SLI, SLO, SLA: messen, zielen, versprechen
 - Fehlerbudget: Wie viel Ausfall dürfen wir uns leisten?
 - Verfügbarkeit verketteter Komponenten: Multiplikation der Wahrscheinlichkeiten
+
+## Unser Buchungs-SLI: Was zählt als Erfolg?
+
+- **Grundgesamtheit:** eindeutige, gültige Buchungsabsichten für einen zuvor als frei angezeigten Slot; pro Idempotency Key nur einmal zählen
+- Ausgeschlossen: ungültige Eingaben, fehlende Berechtigung, Health Checks und technische Retries derselben Absicht
+- **Gutes Ereignis:** Buchung dauerhaft gespeichert und Bestätigung innerhalb von 2 Sekunden zurückgegeben
+- Fehler, Timeout, verspätete Antwort oder fehlende Bestätigung zählen als schlecht – auch wenn ein Retry später gelingt
+- **Messfenster:** rollierende 28 Tage; ein zeitbasiertes Uptime-SLI wäre eine andere Messgröße
+- **SLO:** mindestens 99,9 % gute Buchungsabsichten pro Messfenster
+
+## Fehlerbudget einmal berechnet
+
+- Im 28-Tage-Fenster: 50.000 eindeutige Buchungsabsichten, davon 49.960 gut und 40 schlecht
+- SLI: $49.960 / 50.000 = 99{,}92\%$; SLO: $99{,}9\%$
+- Fehlerbudget: höchstens $0{,}1\% \times 50.000 = 50$ schlechte Absichten
+- Verbraucht: 40 von 50, also 80 %; verbleibend: 10 schlechte Absichten
+- Das Budget zählt Nutzerereignisse, nicht Minuten; schneller Erfolg nach einem Fehler-Retry zählt nicht rückwirkend als gut
 
 ## Warum verteilte Systeme scheitern
 
@@ -231,12 +248,20 @@ API --> Browser : ursprüngliches Ergebnis
 - Retries an einer verantwortlichen Stelle bündeln; **Retry-Budget** für zusätzliche Versuche begrenzen
 - Kalenderaufrufe separat begrenzen, Backoff mit Jitter nutzen und Aufträge erst später erneut versuchen
 
-## Circuit Breaker und Bulkhead
+## Circuit Breaker: Fehlerkaskaden unterbrechen
 
-- Circuit Breaker: Zustände, Schwellwerte, halb offen
-- Bulkhead: Ressourcen isolieren, damit ein Fehler nicht alles mitnimmt
-- Cal.diy: eigener begrenzter Worker-Pool für Kalenderaufrufe, damit ein langsamer Kalender nicht auch E-Mails blockiert
-- Bibliotheken und Service Meshes, die das übernehmen
+- **Closed:** Aufrufe passieren; Fehlerquote oder Timeout-Schwellwert über ein Zeitfenster öffnet den Breaker
+- **Open:** Aufrufe werden sofort abgewiesen oder auf einen Fallback gelenkt; keine wartenden Threads für eine kaputte Abhängigkeit
+- Nach einer Abkühlzeit **half-open:** nur wenige Probeaufrufe zulassen
+- Probe erfolgreich: zurück zu closed; Probe scheitert: zurück zu open und erneut warten
+- **Cal.diy:** Kalenderaufrufe nach erschöpftem Retry-Budget pausieren; Buchung bleibt gespeichert, Synchronisation ausstehend
+- Breaker ersetzt weder Timeout noch Retry-Limit; sonst kann ein langsamer Aufruf den Zustand nie rechtzeitig melden
+
+## Bulkhead: Ressourcen voneinander isolieren
+
+- Begrenzte, getrennte Pools oder Limits halten Fehler und Rückstau innerhalb einer Abhängigkeit
+- **Cal.diy:** eigener Worker-Pool für Kalenderaufrufe, damit ein langsamer Kalender keine E-Mails blockiert
+- Zusammen mit Queue und Lastgrenze verhindert Isolation nicht den Ausfall, aber dessen Ausbreitung
 
 ## Last begrenzen
 
@@ -311,13 +336,16 @@ API --> Browser : ursprüngliches Ergebnis
 - Incident Management als Prozess (Vertiefung in Vorlesung 6)
 - Öffentliche Post-Mortems als Lernmaterial
 
-## Fallbeispiel: ein öffentliches Post-Mortem
+## Fallbeispiel: GitHub-Ausfall vom 21. Oktober 2018
 
-- Ein realer Großausfall Schritt für Schritt: Auslöser, Verstärker, Erkennung, Behebung
-- Welche Muster aus dieser Vorlesung hätten geholfen, welche haben geschadet?
-- Was hat die Organisation danach geändert?
+- Wartung an optischer Netzwerktechnik unterbrach für 43 Sekunden die Verbindung zum primären Rechenzentrum
+- Orchestrator wählte per Quorum neue MySQL-Primaries an der Westküste; nach Wiederverbindung existierten nicht replizierte Schreibvorgänge an beiden Standorten
+- Sicherer Failback war nicht möglich; GitHub priorisierte Datenintegrität vor Verfügbarkeit und pausierte Webhooks sowie Pages-Builds
+- 24 Stunden und 11 Minuten degradierter Dienst; Wiederherstellung umfasste Backups, Replikationsaufbau und Abbau eines großen Rückstands
+- **Lernpunkt:** Failover-Regeln müssen zur Anwendungstopologie passen; Redundanz allein verhindert weder inkonsistente Zustände noch lange Wiederherstellung
+- GitHub kündigte u.a. regionale Grenzen für Primary-Failover, Active/Active/Active und mehr Fault-Injection an
 
-<!-- TODO(Lu): pick one public post-mortem (e.g. AWS us-east-1, Cloudflare, GitHub 2018) -->
+Quelle: [October 21 post-incident analysis](https://github.blog/news-insights/company-news/oct21-post-incident-analysis/) (GitHub, 2018)
 
 ## Beispiel: Was passiert, wenn ...?
 
@@ -331,15 +359,23 @@ API --> Browser : ursprüngliches Ergebnis
 
 - Erweiterung unseres Cal.diy-Lehrmodells: optionale KI formuliert Terminbeschreibungen
 - Rate Limits (HTTP 429), Ausfälle, Latenzschwankungen, Modell-Deprecation
-- Timeouts für Anfragen, die legitim lange dauern
-- Fallback-Modelle und Multi-Provider-Routing
-- Kostenbudgets als Sicherung gegen Retry-Schleifen
+- Inferenz hat ein eigenes Zeit- und Tokenbudget; interaktive Buchung nicht auf Modellantwort warten lassen
+- Fallback-Modell oder manuelle Eingabe nur innerhalb definierter Latenz- und Kostenbudgets
+- Kostenbudgets und Circuit Breaker begrenzen Retry-Schleifen und schützen vor Ausfällen beim Provider
+
+## KI-Retries: technisch oder inhaltlich?
+
+- Vorübergehende Transportfehler, HTTP 429/5xx: begrenzt wiederholen, `Retry-After` beachten, Backoff mit Jitter
+- Gemeinsame Deadline sowie Versuch-, Token- und Kostenlimit; keine Retry-Schichten stapeln
+- Timeout ist mehrdeutig: Provider kann die Generierung bereits ausgeführt und berechnet haben
+- Derselbe Prompt-Retry garantiert kein besseres Ergebnis; ungültige strukturierte Ausgabe höchstens gezielt reparieren und erneut validieren
+- Halluzination oder Verweigerung nicht blind wiederholen; Fallback auf manuelle Eingabe oder menschliche Prüfung
+- Tool-Aufrufe mit Seiteneffekten brauchen Idempotency Keys – ein Modell-Retry darf keine zweite Buchung auslösen
 
 ## Nicht-deterministische Fehler
 
 - Falsches Format, Halluzination, Verweigerung: Fehler ohne Exception
 - Ausgabevalidierung, strukturierte Ausgaben, Guardrails
-- Retry mit verändertem Prompt statt identischer Wiederholung
 - Menschliche Eskalation als Fallback
 
 ## Graceful Degradation mit KI
@@ -355,7 +391,7 @@ API --> Browser : ursprüngliches Ergebnis
 ## Zusammenfassung
 
 - Ausfälle sind normal; das Design bestimmt, ob sie Nutzer treffen
-- Verfügbarkeit ist messbar und hat einen Preis, das Fehlerbudget macht ihn verhandelbar
+- Verfügbarkeit ist messbar: Buchungs-SLI, SLO und Fehlerbudget machen den Zielkonflikt konkret
 - Redundanz braucht Failover, Failover braucht Konsens oder klare Regeln
 - Timeouts, Retries mit Backoff, Idempotenz, Circuit Breaker, Bulkheads, Load Shedding
 - Modell-APIs sind Abhängigkeiten wie jede andere, nur mit neuen Fehlerarten
