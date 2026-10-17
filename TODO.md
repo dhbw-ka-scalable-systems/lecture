@@ -85,5 +85,4 @@ Further sources, referenced where they fit:
 
 - [ ] Exam: format, duration, aids, weighting, date (TODO markers in sessions 1 and 7). Session 7 is scheduled one or two weeks before it.
 - [ ] Diagrams: none yet; candidates are marked in the outlines (latency table, style comparison table, LLM reference architecture)
-- [x] Session 4: use GitHub's 2018 post-mortem for the case slide
 - [ ] Session 6: pick the stack for the observability demo
