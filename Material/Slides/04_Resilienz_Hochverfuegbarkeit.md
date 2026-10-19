@@ -15,19 +15,6 @@ toc: true
 section-titles: true
 ...
 
-<!--
-Time plan: 4 VE = 180 min content, Friday 8:30-11:45 with a 15 min break on top.
-  Heute, Lernziele                         5
-  Grundlagen                              35   includes Cal.diy teaching model and worked booking SLI/SLO
-  Redundanz und Hochverfügbarkeit         25   includes capacity reserve and split brain
-  Resilienz-Muster                        60   includes retry sequence and failure cascades
-  Resilienz testen                        35   2 slides + post-mortem case ~10 + example ~12
-  AI Engineering                          15
-  Zusammenfassung                          5
-  Sum                                    180   no slack; estimates, not rehearsed
-The requested reduction to 150 min and new student work phases are deferred.
--->
-
 # Grundlagen
 
 ## Heute
@@ -50,12 +37,13 @@ The requested reduction to 150 min and new student work phases are deferred.
 ## Unser Beispiel: Cal.diy unter Störungen
 
 - Terminplattform aus Vorlesung 2: freie Zeiten anzeigen, buchen, Kalender aktualisieren
-- Wir erweitern das **Teaching-Model**, nicht die behauptete Ist-Architektur von Cal.diy
-- Buchungen und Mandantendaten liegen in PostgreSQL
-- Ein Worker überträgt gespeicherte Aufträge an Kalender- und E-Mail-Dienste
-- Was passiert bei verlorenen Antworten, langsamen Abhängigkeiten oder einem Datenbankausfall?
+- Annahmen:
+  - Buchungen und Mandantendaten liegen in PostgreSQL
+  - Ein Worker überträgt gespeicherte Aufträge an Kalender- und E-Mail-Dienste
 
-## Cal.diy: unser Lehrmodell
+Was passiert bei verlorenen Antworten, langsamen Abhängigkeiten oder einem Datenbankausfall?
+
+## Überblick Cal.diy  
 
 ```plantuml
 @startuml
@@ -72,49 +60,122 @@ Worker --> External : nachgelagert übertragen
 @enduml
 ```
 
-- Buchung und Outbox-Eintrag werden gemeinsam gespeichert (Bezug Vorlesung 2)
+- Buchung und Outbox-Eintrag werden gemeinsam gespeichert
 - Buchungserfolg und externe Synchronisation sind getrennte Zustände
 - Annahme: Die Plattform verwaltet die buchbaren Slots verbindlich; externe Kalender werden nachgelagert synchronisiert
 
 ## Begriffe
 
-- Fault, Error, Failure: Ursache, Zustand, Wirkung
-- Zuverlässigkeit: funktioniert korrekt, auch wenn etwas schiefgeht
-- Verfügbarkeit: ist erreichbar, wenn gebraucht
-- Resilienz: erholt sich von Störungen
-- Robustheit: hält Störungen aus, ohne sich zu verändern
+- **Fault, Error, Failure**: Ursache, Zustand, Wirkung
+- **Zuverlässigkeit**: funktioniert korrekt, auch wenn etwas schiefgeht
+- **Verfügbarkeit**: ist erreichbar, wenn gebraucht
+- **Resilienz**: erholt sich von Störungen
+- **Robustheit**: hält Störungen aus, ohne sich zu verändern
+
+## Fault, Error, Failure: Ursache, Zustand, Wirkung
+
+- **Fault:** Ursache eines Problems, z. B. ein Bug bei der Prüfung freier Termine.
+- **Error:** fehlerhafter interner Zustand, z. B. das System hält einen bereits belegten Termin für frei.
+- **Failure:** sichtbares Fehlverhalten, z. B. die Plattform bestätigt eine Doppelbuchung.
+- Ein Fault führt nicht zwangsläufig zu einem Failure: Das System kann den Fehlerzustand erkennen und abfangen.
 
 ## Verfügbarkeit messen
 
-- Die Neunen: 99 %, 99,9 %, 99,99 % und was sie im Jahr bedeuten
-- MTBF und MTTR: Ausfälle vermeiden vs. schnell beheben
-- SLI, SLO, SLA: messen, zielen, versprechen
-- Fehlerbudget: Wie viel Ausfall dürfen wir uns leisten?
-- Verfügbarkeit verketteter Komponenten: Multiplikation der Wahrscheinlichkeiten
+- Eine Prozentzahl ist nur aussagekräftig, wenn klar ist, welche Leistung als verfügbar gilt und über welchen Zeitraum gemessen wird.
+- **Zeitbasiert**: Anteil der Zeit, in der der Dienst die vereinbarte Funktion erfüllt.
+- **Anfragebasiert**: Anteil erfolgreicher Anfragen; das ist ein anderes SLI als Uptime in Minuten.
+- Geplante Wartung zählt nur dann nicht als Ausfall, wenn die Messdefinition sie ausdrücklich ausschließt.
+
+## Die Neunen in Zeit übersetzt
+
+- Annahme: 365 Tage im Jahr, 24/7-Betrieb; geplante Wartung ist nicht ausgenommen.
+- **99 %** Verfügbarkeit: höchstens 3 Tage, 15 Stunden und 36 Minuten Ausfall pro Jahr.
+- **99,9 %**: höchstens 8 Stunden und 46 Minuten Ausfall pro Jahr.
+- **99,99 %**: höchstens 52 Minuten und 34 Sekunden Ausfall pro Jahr.
+- **99,999 %**: höchstens 5 Minuten und 15 Sekunden Ausfall pro Jahr.
+- Jede zusätzliche 9 erhöht den Aufwand deutlich
+
+## MTBF: Wie oft fällt der Dienst aus?
+
+- **Mean Time Between Failures**: durchschnittliche Betriebszeit zwischen zwei Ausfällen.
+- Längere MTBF bedeutet, dass Ausfälle seltener auftreten.
+- MTBF beschreibt die Häufigkeit, nicht die Dauer eines einzelnen Ausfalls.
+- Aussagekräftig nur mit klarer Definition von Ausfall, Messzeitraum und betrachteten Instanzen.
+
+## MTTR: Wie schnell ist der Dienst wiederhergestellt?
+
+- **Mean Time To Repair/Restore**: durchschnittliche Dauer bis zur Wiederherstellung nach einem Ausfall.
+- Festlegen, wann die Uhr startet und endet, z. B. vom Beginn der Beeinträchtigung bis zur Wiederherstellung des Dienstes.
+- Kürzere MTTR bedeutet weniger Ausfallzeit pro Störung.
+- Näherung für einen reparierbaren Dienst: Verfügbarkeit $\approx \frac{MTBF}{MTBF + MTTR}$.
+- Beispiel: MTBF 100 Stunden und MTTR 1 Stunde ergeben etwa 99,0 % Verfügbarkeit.
+
+## SLI: Was messen wir?
+
+- **Service Level Indicator**: ein konkreter Messwert für die erlebte Servicequalität.
+- Beispiele: Anteil erfolgreicher Buchungen, Antwortzeit oder Anteil erfolgreicher HTTP-Anfragen.
+- Messgröße, Grundgesamtheit, Messfenster und Behandlung von Fehlern genau festlegen.
+- Ohne klare Definition können zwei Teams denselben Dienst mit unterschiedlichen Zahlen bewerten.
+
+## SLO: Welches Qualitätsziel setzen wir?
+
+- **Service Level Objective**: Zielwert für einen SLI innerhalb eines festgelegten Messfensters.
+- Beispiel: Mindestens 99,9 % der gültigen Buchungsabsichten gelingen innerhalb von 2 Sekunden, gemessen über 28 Tage.
+- Bei einem Ziel von 99,9 % beträgt das Fehlerbudget 0,1 % der betrachteten Ereignisse.
+- Das Ziel hilft, Zuverlässigkeit und Änderungsfrequenz abzuwägen, nicht automatisch garantiert für Kunden
+
+## SLA: Was wird vertraglich zugesagt?
+
+- **Service Level Agreement**: Vereinbarung mit _Kunden_ über Leistungsniveau, Messung und Folgen bei Nichterfüllung
+- Enthält typischerweise Zielwerte, Geltungsbereich, Messregeln und mögliche Ausgleichsleistungen
+- Ein internes SLO kann/sollte strenger sein als das SLA, damit genug Puffer für vertragliche Zusagen bleibt
+- Entscheidend sind auch Definition und vereinbarte Konsequenzen
+
+## Verfügbarkeit verketteter Komponenten
+
+- Sind mehrere Komponenten für eine Anfrage zwingend nötig, müssen alle verfügbar sein
+- Bei unabhängigen Ausfällen multiplizieren sich die Verfügbarkeiten: API 99,9 % × Datenbank 99,9 % = etwa 99,80 %
+- **ABER**: Abhängigkeiten und gemeinsame Fehlerursachen machen die Unabhängigkeitsannahme oft unzutreffend
+- Redundanz kann die Verfügbarkeit verbessern, beseitigt aber keine gemeinsamen Fehlerursachen!
 
 ## Unser Buchungs-SLI: Was zählt als Erfolg?
 
-- **Grundgesamtheit:** eindeutige, gültige Buchungsabsichten für einen zuvor als frei angezeigten Slot; pro Idempotency Key nur einmal zählen
+- **Grundgesamtheit:** eindeutige, gültige Buchungsabsichten für einen _zuvor als frei angezeigten Slot_; pro Idempotency Key nur einmal zählen
 - Ausgeschlossen: ungültige Eingaben, fehlende Berechtigung, Health Checks und technische Retries derselben Absicht
 - **Gutes Ereignis:** Buchung dauerhaft gespeichert und Bestätigung innerhalb von 2 Sekunden zurückgegeben
-- Fehler, Timeout, verspätete Antwort oder fehlende Bestätigung zählen als schlecht – auch wenn ein Retry später gelingt
-- **Messfenster:** rollierende 28 Tage; ein zeitbasiertes Uptime-SLI wäre eine andere Messgröße
+- Fehler, Timeout, verspätete Antwort oder fehlende Bestätigung zählen als schlecht
+- **Messfenster:** rollierende 28 Tage; ein zeitbasiertes Uptime-SLI wäre eine alternative
 - **SLO:** mindestens 99,9 % gute Buchungsabsichten pro Messfenster
 
-## Fehlerbudget einmal berechnet
+## Fehlerbudget berechnen
 
 - Im 28-Tage-Fenster: 50.000 eindeutige Buchungsabsichten, davon 49.960 gut und 40 schlecht
 - SLI: $49.960 / 50.000 = 99{,}92\%$; SLO: $99{,}9\%$
-- Fehlerbudget: höchstens $0{,}1\% \times 50.000 = 50$ schlechte Absichten
-- Verbraucht: 40 von 50, also 80 %; verbleibend: 10 schlechte Absichten
+- Fehlerbudget: höchstens $0{,}1\% \times 50.000 = 50$ schlechte Buchungen
+- Verbraucht: 40 von 50, also 80 %; verbleibend: 10 schlechte Buchungen
 - Das Budget zählt Nutzerereignisse, nicht Minuten; schneller Erfolg nach einem Fehler-Retry zählt nicht rückwirkend als gut
+  - Heißt auch: für Benutzer ist die "gefühlte" Verfügbarkeit noch besser
 
 ## Warum verteilte Systeme scheitern
 
-- Das Netzwerk ist unzuverlässig: Partitionen, Latenz, Paketverlust
-- Uhren gehen falsch, Zeit ist nicht global
-- Teilausfälle: Ein Knoten weiß nicht, ob der andere tot oder nur langsam ist
-- Fallacies of Distributed Computing (Peter Deutsch)
+- Bei Netzwerkkommunikation immer: Verzögerungen, Paketverlust, Ausfälle
+  - Antwort auch bei erfolgreicher Verarbeitung nicht garantiert
+- Uhren driften und sind nicht perfekt synchronisiert
+  - Zeitstempel allein liefern keine sichere globale Reihenfolge, Konsistenzprobleme möglich
+- Teilausfälle sind normal: Ein Knoten kann unerreichbar sein, während der Rest des Systems weiterläuft.
+- Ein Timeout zeigt nicht, ob ein anderer Knoten abgestürzt ist oder nur langsam antwortet
+
+## Fallacies of Distributed Computing
+
+Peter Deutschs acht Fallacies :
+
+- **The network is reliable:** Pakete können verloren gehen, Verbindungen abbrechen.
+- **Latency is zero:** Antworten brauchen Zeit; Timeouts sind nur Grenzwerte.
+- **Bandwidth is infinite:** Konkurrenz und Last begrenzen den Durchsatz.
+- **The network is secure:** Angriffe und Fehlkonfigurationen sind möglich.
+- **Topology doesn't change:** Knoten, Routen und Adressen können wechseln.
+- **There is one administrator:** Systeme und Regeln liegen oft in verschiedenen Zuständigkeiten.
+- **Transport cost is zero; the network is homogeneous:** Übertragung braucht Ressourcen, Protokolle und Systeme unterscheiden sich.
 
 ## Ausfallarten
 
@@ -386,16 +447,3 @@ Quelle: [October 21 post-incident analysis](https://github.blog/news-insights/co
 - Cal.diy-Lehrmodell: Terminbeschreibung manuell eingeben statt generieren; Buchung bleibt möglich
 - Was der Nutzer erfahren soll, wenn die KI nicht verfügbar ist
 
-# Zusammenfassung
-
-## Zusammenfassung
-
-- Ausfälle sind normal; das Design bestimmt, ob sie Nutzer treffen
-- Verfügbarkeit ist messbar: Buchungs-SLI, SLO und Fehlerbudget machen den Zielkonflikt konkret
-- Redundanz braucht Failover, Failover braucht Konsens oder klare Regeln
-- Timeouts, Retries mit Backoff, Idempotenz, Circuit Breaker, Bulkheads, Load Shedding
-- Modell-APIs sind Abhängigkeiten wie jede andere, nur mit neuen Fehlerarten
-
-## Nächste Vorlesung
-
-- Architekturstile (Silas)
