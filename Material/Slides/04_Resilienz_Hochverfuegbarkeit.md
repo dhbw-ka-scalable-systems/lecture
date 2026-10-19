@@ -15,35 +15,36 @@ toc: true
 section-titles: true
 ...
 
-# Grundlagen
+# Einstieg: Wenn Abhängigkeiten ausfallen
 
 ## Heute
 
-- Begriffe: Fehler, Ausfall, Verfügbarkeit, Resilienz
-- Warum verteilte Systeme scheitern
-- Redundanz und Hochverfügbarkeit
-- Resilienz-Muster
-- Resilienz testen
-- AI Engineering: Resilienz für KI-Komponenten
-- Durchgängiges Beispiel: Cal.diy-Terminplattform aus Vorlesung 2
+- Zuverlässigkeit aus Nutzersicht messen.
+- Fehler begrenzen, bevor sie zur Kaskade werden.
+- Hochverfügbarkeit und Recovery entwerfen.
+- Resilienz praktisch testen und aus Vorfällen lernen.
+- AI Engineering: KI-Komponenten als unzuverlässige Abhängigkeiten.
+- Durchgängiges Beispiel: Cal.diy-Terminplattform aus Vorlesung 2.
 
 ## Lernziele
 
-- Verfügbarkeit definieren, messen und über Fehlerbudgets steuern
-- Typische Ausfallarten verteilter Systeme erkennen
-- Redundanz- und Failover-Strategien für zustandslose und zustandsbehaftete Komponenten entwerfen
-- Resilienz-Muster gezielt einsetzen und ihre Nebenwirkungen kennen
+- Zuverlässigkeit, Verfügbarkeit, Fehlertoleranz und Resilienz unterscheiden.
+- Ein SLI und SLO für einen Anwendungsfall formulieren.
+- Fehlerkaskaden erkennen und passende Stabilitätsmuster kombinieren.
+- Redundanz, Replikation und Backup voneinander abgrenzen.
+- Ein Ausfallszenario bewerten und eine Schutzmaßnahme begründen.
 
-## Unser Beispiel: Cal.diy unter Störungen
+## Unser Szenario: Cal.diy unter Störungen
 
-- Terminplattform aus Vorlesung 2: freie Zeiten anzeigen, buchen, Kalender aktualisieren
-- Annahmen:
-  - Buchungen und Mandantendaten liegen in PostgreSQL
-  - Ein Worker überträgt gespeicherte Aufträge an Kalender- und E-Mail-Dienste
+- Die Buchungsseite erhält ungewöhnlich viele Anfragen
+- PostgreSQL und die Buchungs-API sind erreichbar
+- Die externe Kalender-API antwortet immer langsamer
+- Clients wiederholen fehlgeschlagene Requests
+- Die Synchronisationsaufträge sammeln sich; ein Mandant erzeugt besonders viel Last
 
-Was passiert bei verlorenen Antworten, langsamen Abhängigkeiten oder einem Datenbankausfall?
+Leitfrage: Wie bleibt die Buchung nutzbar, ohne Daten zu verlieren oder andere Mandanten mitzuziehen?
 
-## Überblick Cal.diy  
+## Buchungsfluss und Fehlergrenzen
 
 ```plantuml
 @startuml
@@ -54,7 +55,7 @@ database "PostgreSQL\nBuchungen + Outbox" as DB
 rectangle Worker
 cloud "Kalender / E-Mail" as External
 Gast --> API : buchen
-API --> DB : Transaktion
+API --> DB : Buchung + Outbox atomar speichern
 Worker --> DB : Aufträge lesen / quittieren
 Worker --> External : nachgelagert übertragen
 @enduml
@@ -62,188 +63,193 @@ Worker --> External : nachgelagert übertragen
 
 - Buchung und Outbox-Eintrag werden gemeinsam gespeichert
 - Buchungserfolg und externe Synchronisation sind getrennte Zustände
-- Annahme: Die Plattform verwaltet die buchbaren Slots verbindlich; externe Kalender werden nachgelagert synchronisiert
+- Die Plattform verwaltet buchbare Slots verbindlich; externe Kalender werden nachgelagert synchronisiert
 
-## Begriffe
+# Zuverlässigkeit messbar machen
 
-- **Fault, Error, Failure**: Ursache, Zustand, Wirkung
-- **Zuverlässigkeit**: funktioniert korrekt, auch wenn etwas schiefgeht
-- **Verfügbarkeit**: ist erreichbar, wenn gebraucht
-- **Resilienz**: erholt sich von Störungen
-- **Robustheit**: hält Störungen aus, ohne sich zu verändern
+## Fehler sind normal
 
-## Fault, Error, Failure: Ursache, Zustand, Wirkung
+- Prozesse stürzen ab; Netzwerke verlieren Pakete.
+- Abhängigkeiten werden langsam oder sind nicht erreichbar.
+- Verbindungspools und Queues laufen voll.
+- Konfigurationen oder Releases führen neue Fehler ein.
+- Gemeinsame Fehlerursachen wie Zone, Deployment oder Bug überwinden naive Redundanz.
+- Last übersteigt zeitweise die verfügbare Kapazität.
 
-- **Fault:** Ursache eines Problems, z. B. ein Bug bei der Prüfung freier Termine.
-- **Error:** fehlerhafter interner Zustand, z. B. das System hält einen bereits belegten Termin für frei.
-- **Failure:** sichtbares Fehlverhalten, z. B. die Plattform bestätigt eine Doppelbuchung.
-- Ein Fault führt nicht zwangsläufig zu einem Failure: Das System kann den Fehlerzustand erkennen und abfangen.
+Architekturziel: Nicht jeden Fehler verhindern, sondern seine Auswirkungen kontrollieren.
+
+## Reliability, Availability und Resilienz
+
+| Begriff | Leitfrage |
+|---|---|
+| **Reliability** | Erfüllt das System seine Funktion über einen Zeitraum korrekt? |
+| **Availability** | Ist der Dienst zum benötigten Zeitpunkt nutzbar? |
+| **Fault Tolerance** | Arbeitet das System trotz bestimmter Fehler weiter? |
+| **Resilience** | Begrenzt das System Auswirkungen und erholt sich? |
+| **High Availability** | Welche Architektur reduziert ungeplante Nichtverfügbarkeit? |
+
+Die Begriffe hängen zusammen, beschreiben aber unterschiedliche Eigenschaften.
+
+## Fault, Error, Failure
+
+- **Fault:** Ursache oder Defekt, zum Beispiel ein Fehler in der Prüfung freier Termine.
+- **Error:** fehlerhafter interner Zustand, zum Beispiel ein belegter Termin wird als frei geführt.
+- **Failure:** von außen sichtbare Abweichung, zum Beispiel eine bestätigte Doppelbuchung.
+- Ein Fault führt nicht zwangsläufig zu einem Failure; das System kann den Error erkennen und abfangen.
+
+## Partielle Fehler und Latenz
+
+- Ein Teil des Systems funktioniert, während eine andere Komponente langsam oder ausgefallen ist.
+- Oft ist unklar, ob eine entfernte Komponente defekt oder nur langsam ist.
+- Eine Antwort nach 30 Sekunden kann technisch erfolgreich, für den Nutzer aber unbrauchbar sein.
+- Wartende Requests belegen Threads, Verbindungen und Speicher.
+
+Folgerung: Auch erfolgreiche Aufrufe brauchen eine Zeitgrenze.
 
 ## Verfügbarkeit messen
 
-- Eine Prozentzahl ist nur aussagekräftig, wenn klar ist, welche Leistung als verfügbar gilt und über welchen Zeitraum gemessen wird.
-- **Zeitbasiert**: Anteil der Zeit, in der der Dienst die vereinbarte Funktion erfüllt.
-- **Anfragebasiert**: Anteil erfolgreicher Anfragen; das ist ein anderes SLI als Uptime in Minuten.
+- Eine Prozentzahl ist nur aussagekräftig, wenn Leistung und Messzeitraum festgelegt sind.
+- **Zeitbasiert:** Anteil der Zeit, in der der Dienst die vereinbarte Funktion erfüllt.
+- **Anfragebasiert:** Anteil erfolgreicher Anfragen; ein anderes SLI als Uptime in Minuten.
 - Geplante Wartung zählt nur dann nicht als Ausfall, wenn die Messdefinition sie ausdrücklich ausschließt.
 
 ## Die Neunen in Zeit übersetzt
 
 - Annahme: 365 Tage im Jahr, 24/7-Betrieb; geplante Wartung ist nicht ausgenommen.
-- **99 %** Verfügbarkeit: höchstens 3 Tage, 15 Stunden und 36 Minuten Ausfall pro Jahr.
-- **99,9 %**: höchstens 8 Stunden und 46 Minuten Ausfall pro Jahr.
-- **99,99 %**: höchstens 52 Minuten und 34 Sekunden Ausfall pro Jahr.
-- **99,999 %**: höchstens 5 Minuten und 15 Sekunden Ausfall pro Jahr.
-- Jede zusätzliche 9 erhöht den Aufwand deutlich
+- **99 %:** höchstens 3 Tage, 15 Stunden und 36 Minuten Ausfall pro Jahr.
+- **99,9 %:** höchstens 8 Stunden und 46 Minuten Ausfall pro Jahr.
+- **99,99 %:** höchstens 52 Minuten und 34 Sekunden Ausfall pro Jahr.
+- **99,999 %:** höchstens 5 Minuten und 15 Sekunden Ausfall pro Jahr.
+- Jede zusätzliche Neun erhöht den Aufwand deutlich.
 
-## MTBF: Wie oft fällt der Dienst aus?
+## MTBF und MTTR
 
-- **Mean Time Between Failures**: durchschnittliche Betriebszeit zwischen zwei Ausfällen.
-- Längere MTBF bedeutet, dass Ausfälle seltener auftreten.
-- MTBF beschreibt die Häufigkeit, nicht die Dauer eines einzelnen Ausfalls.
-- Aussagekräftig nur mit klarer Definition von Ausfall, Messzeitraum und betrachteten Instanzen.
+- **MTBF (Mean Time Between Failures):** durchschnittliche Betriebszeit zwischen zwei Ausfällen.
+- Längere MTBF bedeutet, dass Ausfälle seltener auftreten; sie beschreibt nicht deren Dauer.
+- **MTTR (Mean Time To Repair/Restore):** durchschnittliche Dauer bis zur Wiederherstellung.
+- Messbeginn und -ende festlegen, zum Beispiel vom Beginn der Beeinträchtigung bis zur Wiederherstellung.
+- Näherung für einen reparierbaren Dienst: Verfügbarkeit ≈ MTBF / (MTBF + MTTR).
+- Bei MTBF 100 Stunden und MTTR 1 Stunde ergibt sich ungefähr 99,0 % Verfügbarkeit.
 
-## MTTR: Wie schnell ist der Dienst wiederhergestellt?
+## SLI, SLO und SLA
 
-- **Mean Time To Repair/Restore**: durchschnittliche Dauer bis zur Wiederherstellung nach einem Ausfall.
-- Festlegen, wann die Uhr startet und endet, z. B. vom Beginn der Beeinträchtigung bis zur Wiederherstellung des Dienstes.
-- Kürzere MTTR bedeutet weniger Ausfallzeit pro Störung.
-- Näherung für einen reparierbaren Dienst: Verfügbarkeit $\approx \frac{MTBF}{MTBF + MTTR}$.
-- Beispiel: MTBF 100 Stunden und MTTR 1 Stunde ergeben etwa 99,0 % Verfügbarkeit.
-
-## SLI: Was messen wir?
-
-- **Service Level Indicator**: ein konkreter Messwert für die erlebte Servicequalität.
-- Beispiele: Anteil erfolgreicher Buchungen, Antwortzeit oder Anteil erfolgreicher HTTP-Anfragen.
+- **SLI (Service Level Indicator):** gemessene Größe aus Nutzersicht.
+- **SLO (Service Level Objective):** Zielwert für ein SLI in einem festgelegten Messfenster.
+- **SLA (Service Level Agreement):** vertragliche Vereinbarung mit möglichen Konsequenzen.
+- Ein internes SLO sollte ausreichend Puffer zum vertraglichen SLA lassen.
 - Messgröße, Grundgesamtheit, Messfenster und Behandlung von Fehlern genau festlegen.
-- Ohne klare Definition können zwei Teams denselben Dienst mit unterschiedlichen Zahlen bewerten.
-
-## SLO: Welches Qualitätsziel setzen wir?
-
-- **Service Level Objective**: Zielwert für einen SLI innerhalb eines festgelegten Messfensters.
-- Beispiel: Mindestens 99,9 % der gültigen Buchungsabsichten gelingen innerhalb von 2 Sekunden, gemessen über 28 Tage.
-- Bei einem Ziel von 99,9 % beträgt das Fehlerbudget 0,1 % der betrachteten Ereignisse.
-- Das Ziel hilft, Zuverlässigkeit und Änderungsfrequenz abzuwägen, nicht automatisch garantiert für Kunden
-
-## SLA: Was wird vertraglich zugesagt?
-
-- **Service Level Agreement**: Vereinbarung mit _Kunden_ über Leistungsniveau, Messung und Folgen bei Nichterfüllung
-- Enthält typischerweise Zielwerte, Geltungsbereich, Messregeln und mögliche Ausgleichsleistungen
-- Ein internes SLO kann/sollte strenger sein als das SLA, damit genug Puffer für vertragliche Zusagen bleibt
-- Entscheidend sind auch Definition und vereinbarte Konsequenzen
-
-## Verfügbarkeit verketteter Komponenten
-
-- Sind mehrere Komponenten für eine Anfrage zwingend nötig, müssen alle verfügbar sein
-- Bei unabhängigen Ausfällen multiplizieren sich die Verfügbarkeiten: API 99,9 % × Datenbank 99,9 % = etwa 99,80 %
-- **ABER**: Abhängigkeiten und gemeinsame Fehlerursachen machen die Unabhängigkeitsannahme oft unzutreffend
-- Redundanz kann die Verfügbarkeit verbessern, beseitigt aber keine gemeinsamen Fehlerursachen!
 
 ## Unser Buchungs-SLI: Was zählt als Erfolg?
 
-- **Grundgesamtheit:** eindeutige, gültige Buchungsabsichten für einen _zuvor als frei angezeigten Slot_; pro Idempotency Key nur einmal zählen
-- Ausgeschlossen: ungültige Eingaben, fehlende Berechtigung, Health Checks und technische Retries derselben Absicht
-- **Gutes Ereignis:** Buchung dauerhaft gespeichert und Bestätigung innerhalb von 2 Sekunden zurückgegeben
-- Fehler, Timeout, verspätete Antwort oder fehlende Bestätigung zählen als schlecht
-- **Messfenster:** rollierende 28 Tage; ein zeitbasiertes Uptime-SLI wäre eine alternative
-- **SLO:** mindestens 99,9 % gute Buchungsabsichten pro Messfenster
+- **Grundgesamtheit:** eindeutige, gültige Buchungsabsichten für einen zuvor als frei angezeigten Slot.
+- Pro Idempotency Key wird nur eine Absicht gezählt; technische Retries zählen nicht erneut.
+- Ungültige Eingaben, fehlende Berechtigung und Health Checks sind ausgeschlossen.
+- **Gutes Ereignis:** Buchung dauerhaft gespeichert und Bestätigung innerhalb von 2 Sekunden zurückgegeben.
+- Fehler, Timeout, verspätete oder fehlende Bestätigung zählen als schlecht.
+- **Messfenster:** rollierende 28 Tage; mindestens 99,9 % der Buchungsabsichten sollen gut sein.
+
+## Think–Pair–Share: ein brauchbares SLO
+
+**Arbeitszeit: 6 Minuten — 2 allein, 2 zu zweit, 2 im Plenum.**
+
+Für die Buchungsbestätigung:
+
+1. Was zählt als gültige Anfrage und als Erfolg?
+2. Welche Antwortfrist und welches Messfenster sind sinnvoll?
+3. Gehört die Kalender-Synchronisation in dieses SLI oder braucht sie ein eigenes?
+
+Ergebnis: ein begründetes SLI mit Zielwert; die Synchronisation wird als eigene Funktion abgegrenzt.
 
 ## Fehlerbudget berechnen
 
-- Im 28-Tage-Fenster: 50.000 eindeutige Buchungsabsichten, davon 49.960 gut und 40 schlecht
-- SLI: $49.960 / 50.000 = 99{,}92\%$; SLO: $99{,}9\%$
-- Fehlerbudget: höchstens $0{,}1\% \times 50.000 = 50$ schlechte Buchungen
-- Verbraucht: 40 von 50, also 80 %; verbleibend: 10 schlechte Buchungen
-- Das Budget zählt Nutzerereignisse, nicht Minuten; schneller Erfolg nach einem Fehler-Retry zählt nicht rückwirkend als gut
-  - Heißt auch: für Benutzer ist die "gefühlte" Verfügbarkeit noch besser
+- Im 28-Tage-Fenster gibt es 50.000 eindeutige Buchungsabsichten: 49.960 gute und 40 schlechte.
+- **SLI:** 49.960 / 50.000 = 99,92 %; **SLO:** 99,9 %.
+- Fehlerbudget: höchstens 0,1 % × 50.000 = 50 schlechte Buchungen.
+- Verbraucht sind 40 von 50 Ereignissen, also 80 %; zehn bleiben übrig.
+- Das Budget zählt Nutzerereignisse, nicht Minuten; ein später Retry macht einen Fehler nicht rückwirkend gut.
+- Fehlerbudgets helfen, Zuverlässigkeit und Änderungsfrequenz abzuwägen.
+
+## Verfügbarkeit verketteter Komponenten
+
+- Sind mehrere Komponenten für eine Anfrage zwingend nötig, müssen alle verfügbar sein.
+- Bei unabhängigen Ausfällen multiplizieren sich die Verfügbarkeiten: API 99,9 % × Datenbank 99,9 % ≈ 99,80 %.
+- Abhängigkeiten und gemeinsame Fehlerursachen machen die Unabhängigkeitsannahme oft unzutreffend.
+- Redundanz kann Verfügbarkeit verbessern, beseitigt aber keine gemeinsamen Fehlerursachen.
 
 ## Warum verteilte Systeme scheitern
 
-- Bei Netzwerkkommunikation immer: Verzögerungen, Paketverlust, Ausfälle
-  - Antwort auch bei erfolgreicher Verarbeitung nicht garantiert
-- Uhren driften und sind nicht perfekt synchronisiert
-  - Zeitstempel allein liefern keine sichere globale Reihenfolge, Konsistenzprobleme möglich
-- Teilausfälle sind normal: Ein Knoten kann unerreichbar sein, während der Rest des Systems weiterläuft.
-- Ein Timeout zeigt nicht, ob ein anderer Knoten abgestürzt ist oder nur langsam antwortet
+- Netzwerke verzögern oder verlieren Nachrichten; eine Antwort ist auch bei erfolgreicher Verarbeitung nicht garantiert.
+- Uhren driften und sind nicht perfekt synchronisiert.
+- Zeitstempel allein liefern keine sichere globale Reihenfolge.
+- Teilausfälle sind normal: Ein Knoten kann unerreichbar sein, während der Rest weiterläuft.
+- Ein Timeout zeigt nicht, ob der andere Knoten abgestürzt ist oder nur langsam antwortet.
 
-## Fallacies of Distributed Computing
+## Fallacies of Distributed Computing (1/2)
 
-Peter Deutschs acht Fallacies :
+Peter Deutschs Annahmen, die beim Entwurf verteilter Systeme oft falsch sind:
 
-- **The network is reliable:** Pakete können verloren gehen, Verbindungen abbrechen.
+- **The network is reliable:** Pakete können verloren gehen und Verbindungen abbrechen.
 - **Latency is zero:** Antworten brauchen Zeit; Timeouts sind nur Grenzwerte.
 - **Bandwidth is infinite:** Konkurrenz und Last begrenzen den Durchsatz.
 - **The network is secure:** Angriffe und Fehlkonfigurationen sind möglich.
+
+## Fallacies of Distributed Computing (2/2)
+
 - **Topology doesn't change:** Knoten, Routen und Adressen können wechseln.
 - **There is one administrator:** Systeme und Regeln liegen oft in verschiedenen Zuständigkeiten.
-- **Transport cost is zero; the network is homogeneous:** Übertragung braucht Ressourcen, Protokolle und Systeme unterscheiden sich.
+- **Transport cost is zero:** Übertragung braucht Zeit und Ressourcen.
+- **The network is homogeneous:** Protokolle, Systeme und Geräte unterscheiden sich.
 
 ## Ausfallarten
 
-- Crash, Omission, Timing, Byzantine
-- Korrelierte Ausfälle: gleiche Zone, gleiches Deployment, gleicher Bug
-- Kaskadierende Ausfälle: Ein Fehler zieht den nächsten nach
-- Metastabile Ausfälle: Das System erholt sich nicht von selbst
+- **Crash:** Eine Komponente stoppt.
+- **Omission:** Nachrichten werden nicht gesendet oder empfangen.
+- **Timing:** Antworten kommen zu spät oder außerhalb vereinbarter Grenzen.
+- **Byzantine:** Eine Komponente verhält sich beliebig oder widersprüchlich.
+- **Korrelierte, kaskadierende und metastabile Ausfälle** können lokale Fehler verstärken.
 
-# Redundanz und Hochverfügbarkeit
+# Fehlerkaskaden verhindern
 
-## Redundanz auf allen Ebenen
+## Vom langsamen Kalender zur Kaskade
 
-- Instanzen, Verfügbarkeitszonen, Regionen
-- Active-Active vs. Active-Passive
-- Redundanz kostet: Geld, Komplexität, Konsistenzprobleme
-- Wo ist der Single Point of Failure, den wir übersehen haben?
+1. Die Kalender-API wird langsam.
+2. Requests warten und belegen Verbindungen.
+3. Der Verbindungspool der Anwendung läuft voll.
+4. Clients und Worker wiederholen Aufrufe.
+5. Last und Queue-Rückstand wachsen.
+6. Schließlich wird auch die Buchungs-API unbenutzbar.
 
-## Cal.diy: Redundanz ohne Reserve?
+Bleibt ein überlastetes System auch nach Ende des Auslösers instabil, spricht man von einem metastabilen Ausfall.
 
-- Zwei gleich große API-Instanzen bedienen die Buchungen
-- Beide laufen mit jeweils 60 % ihrer Verarbeitungskapazität
-- Eine fällt aus: Die andere müsste bei gleicher Last rechnerisch 120 % übernehmen
-- Wartezeiten und Timeouts steigen; Retries können die Überlast verstärken
-- Reserve für den Ausfallfall vorhalten und überschüssige Last gezielt ablehnen
-- Autoscaling hilft nicht sofort: neue Instanzen müssen erst starten und warm werden
+## Think–Pair–Share: Wo zuerst eingreifen?
 
-## Failover und Konsens
+**Arbeitszeit: 5 Minuten — 1 allein, 2 zu zweit, 2 im Plenum.**
 
-- Ausfall erkennen: Heartbeats, Timeouts, die Grauzone
-- Leader Election, Split Brain, Quorum
-- Konsensprotokolle in einem Satz: Raft, Paxos
-- Wer benutzt das: etcd, ZooKeeper, Kubernetes, Datenbank-Cluster
+Im Kalender-Szenario:
 
-## Cal.diy: Failover kann Doppelbuchungen ermöglichen
+1. Welche Ressource wird zuerst knapp?
+2. Welche Schutzmaßnahme würdet ihr zuerst einsetzen?
+3. Was sollte für den Nutzer weiterhin funktionieren?
 
-- Der Datenbank-Leader ist vom Cluster getrennt, aber für einige API-Instanzen noch erreichbar
-- Die Mehrheitsseite wählt einen neuen Leader; der alte hält sich weiterhin für zuständig
-- **Ohne Schreibschutz für den alten Leader:** Beide Seiten könnten denselben Slot bestätigen
-- Ein Unique Constraint schützt nur innerhalb der jeweiligen Datenbankhistorie
-- Ein Timeout beweist nicht, dass der alte Leader aufgehört hat zu schreiben
-- **Fencing:** Den alten Leader zuverlässig vom Schreiben ausschließen, z.B. durch Abschalten oder Entzug des Storage-Zugriffs
-- Sichere Schreibberechtigung ist Voraussetzung für Failover; eine unklare Seite muss Schreibzugriffe ablehnen
+Ergebnis: eine erste Maßnahme mit kurzer Begründung.
 
-## Zustandslos vs. zustandsbehaftet
+## Timeouts und Deadlines
 
-- Zustandslose Services: replizieren und Load Balancer davor
-- Datenbanken: Replikation, automatisches Failover, Backups (Bezug Vorlesung 2)
-- RPO und RTO: Wie viel Datenverlust und wie lange Ausfall sind akzeptabel?
-- Zustand in Queues und Caches nicht vergessen
+- Jeder Netzwerkaufruf braucht ein begrenztes Zeitbudget.
+- Ein Timeout begrenzt das Warten, sagt aber nicht, ob die Operation ausgeführt wurde.
+- Eine Deadline begrenzt die Gesamtdauer des Requests.
+- Unteraufrufe erhalten nur die verbleibende Zeit.
+- Abbruch und Deadline müssen bis zur Arbeit weitergereicht werden, damit Ressourcen frei werden.
+- Ein Abbruch macht bereits gespeicherte Buchungen nicht rückgängig.
 
-## Disaster Recovery
+## Cal.diy: Timeout heißt Ergebnis unbekannt
 
-- Backup-Strategien: 3-2-1, Restore regelmäßig testen
-- Multi-Region: Active-Active, Warm Standby, Pilot Light, Backup-and-Restore
-- Kosten gegen Nutzen: Was kostet eine Stunde Ausfall?
-- Runbooks für den Ernstfall
+- Die Datenbank bestätigt den Commit, aber die Antwort erreicht den Gast nicht.
+- Nach Ablauf des Timeouts zeigt der Browser einen unklaren Status.
+- **Timeout bedeutet: Ergebnis unbekannt, nicht: Operation nicht ausgeführt.**
+- Ein erneuter Request kann die fachliche Aktion nochmals auslösen.
 
-# Resilienz-Muster
-
-## Timeout: Ist die Buchung fehlgeschlagen?
-
-- Der Gast sendet eine Buchung an die Cal.diy-API
-- Die Datenbank bestätigt den Commit, aber die Antwort erreicht den Gast nicht
-- Nach Ablauf des Timeouts zeigt der Browser einen unklaren Status
-- **Timeout bedeutet: Ergebnis unbekannt, nicht: Operation nicht ausgeführt**
-- Ein erneuter Request kann die fachliche Aktion nochmals auslösen
-
-## Cal.diy: verlorene Antwort und sicherer Retry
+## Cal.diy: Verlorene Antwort und sicherer Retry
 
 ```plantuml
 @startuml
@@ -265,185 +271,362 @@ API --> Browser : ursprüngliches Ergebnis
 
 ## Timeouts: ein Zeitbudget für den gesamten Request
 
-- Netzwerkaufrufe begrenzen: Verbindungsaufbau und Antwortzeit berücksichtigen
-- Beispiel: Für die interaktive Buchung stehen insgesamt 2 Sekunden zur Verfügung
-- Aufrufe und Wiederholungen teilen dieses Budget; nicht jeder Versuch bekommt neue 2 Sekunden
-- Verbleibende Deadline an nachgelagerte Dienste weitergeben
-- Zu kurze Timeouts erzeugen unnötige Wiederholungen, zu lange binden Ressourcen
-- Ein Abbruch macht bereits gespeicherte Buchungen nicht rückgängig
+- Für die interaktive Buchung stehen insgesamt 2 Sekunden zur Verfügung.
+- Aufrufe und Wiederholungen teilen dieses Budget; nicht jeder Versuch bekommt neue 2 Sekunden.
+- Verbindungsaufbau und Antwortzeit in das Zeitbudget einbeziehen.
+- Verbleibende Deadline an nachgelagerte Dienste weitergeben.
+- Zu kurze Timeouts erzeugen unnötige Wiederholungen; zu lange binden Ressourcen.
 
-## Retries: wann und wie oft?
+## Retries, Backoff und Jitter
 
-- Nur geeignete, vorübergehende Fehler wiederholen, z.B. Verbindungsfehler oder HTTP 503
-- Ungültige Eingaben oder einen belegten Slot nicht unverändert erneut senden
-- Bei HTTP 429: `Retry-After` berücksichtigen, sofern vorhanden
-- **Exponential Backoff:** Wartezeit zwischen Versuchen vergrößern, mit Obergrenze
-- **Jitter:** Wartezeiten zufällig streuen, damit nicht alle Clients gleichzeitig wiederholen
-- Versuchszahl und Gesamtdeadline begrenzen; ohne Restbudget abbrechen
-- Schreiboperationen nur wiederholen, wenn ihre Wirkung gegen Duplikate abgesichert ist
+- Nur geeignete, vorübergehende Fehler wiederholen, zum Beispiel Verbindungsfehler oder HTTP 503.
+- Ungültige Eingaben oder einen belegten Slot nicht unverändert erneut senden.
+- Bei HTTP 429 `Retry-After` berücksichtigen, sofern vorhanden.
+- **Exponential Backoff:** Wartezeit zwischen Versuchen vergrößern und begrenzen.
+- **Jitter:** Wartezeiten zufällig streuen, damit Clients nicht gleichzeitig erneut anfragen.
+- Versuchszahl und Gesamtdeadline begrenzen; ohne Restbudget abbrechen.
+- Schreiboperationen nur wiederholen, wenn ihre Wirkung gegen Duplikate abgesichert ist.
 
-## Idempotenz: dieselbe Absicht, keine zusätzliche Wirkung
+## Idempotenz macht Wiederholung sicher
 
-- Idempotent: Mehrfaches Ausführen hat dieselbe beabsichtigte Wirkung wie einmaliges Ausführen
-- „Buchung auf storniert setzen“ kann natürlich idempotent sein; „neue Buchung anlegen“ ist es nicht
-- Der Client erzeugt einen **Idempotency Key pro Buchungsabsicht** und behält ihn bei Retries bei
-- Die API ordnet dem Schlüssel das ursprüngliche Ergebnis zu und liefert es erneut
-- Eine neue Buchungsabsicht erhält einen neuen Schlüssel
-- Der Unique Constraint für einen Slot bleibt nötig: Zwei unterschiedliche Buchungsabsichten dürfen ihn nicht doppelt belegen (Bezug Vorlesung 2)
+- Idempotent: Mehrfaches Ausführen hat dieselbe beabsichtigte Wirkung wie einmaliges Ausführen.
+- „Buchung auf storniert setzen“ kann natürlich idempotent sein; „neue Buchung anlegen“ ist es nicht.
+- Der Client erzeugt einen Idempotency Key pro Buchungsabsicht und behält ihn bei Retries bei.
+- Die API ordnet dem Schlüssel das ursprüngliche Ergebnis zu und liefert es erneut.
+- Eine neue Buchungsabsicht erhält einen neuen Schlüssel.
+- Ein Unique Constraint für den Slot bleibt nötig: Zwei Absichten dürfen ihn nicht doppelt belegen (Bezug Vorlesung 2).
 
-## Idempotency Keys: der Header allein reicht nicht
+## Idempotency Keys korrekt absichern
 
-- Schlüssel an Mandant und Operation binden; Berechtigungen bei jedem Request prüfen
-- Request-Inhalt vergleichen: gleicher Schlüssel mit anderem Inhalt wird abgelehnt
-- Schlüssel, Buchung, Outbox-Eintrag und Ergebnis in einer Datenbanktransaktion speichern
-- Eindeutiger Schlüssel und Transaktionslogik koordinieren gleichzeitige Wiederholungen
-- Solange der erste Request läuft: begrenzt warten oder „noch in Bearbeitung“ zurückgeben, nicht erneut ausführen
-- Aufbewahrungsdauer festlegen: Nach Ablauf des Schlüssels ist ein alter Retry nicht mehr zuverlässig deduplizierbar
+- Schlüssel an Mandant und Operation binden; Berechtigungen bei jedem Request prüfen.
+- Request-Inhalt vergleichen; gleicher Schlüssel mit anderem Inhalt wird abgelehnt.
+- Schlüssel, Buchung, Outbox-Eintrag und Ergebnis atomar speichern.
+- Eindeutiger Schlüssel und Transaktionslogik koordinieren gleichzeitige Wiederholungen.
+- Solange der erste Request läuft, begrenzt warten oder „noch in Bearbeitung“ zurückgeben.
+- Aufbewahrungsdauer festlegen; nach Ablauf ist ein alter Retry nicht mehr zuverlässig deduplizierbar.
 
 ## Cal.diy: Wenn Retries den Kalenderausfall verstärken
 
-- Der Kalenderdienst wird langsam; der Worker wiederholt die Übertragung
-- Worker, HTTP-Client und Proxy versuchen jeweils bis zu dreimal, inklusive Erstversuch
-- Im schlechtesten Fall: $3^3 = 27$ Kalenderaufrufe für einen einzigen Auftrag
-- Zusätzliche Last verzögert Antworten weiter und löst noch mehr Timeouts aus
-- Retries an einer verantwortlichen Stelle bündeln; **Retry-Budget** für zusätzliche Versuche begrenzen
-- Kalenderaufrufe separat begrenzen, Backoff mit Jitter nutzen und Aufträge erst später erneut versuchen
+- Der Kalenderdienst wird langsam; der Worker wiederholt die Übertragung.
+- Worker, HTTP-Client und Proxy versuchen jeweils bis zu dreimal, inklusive Erstversuch.
+- Im schlechtesten Fall entstehen 3³ = 27 Kalenderaufrufe für einen Auftrag.
+- Zusätzliche Last verzögert Antworten weiter und löst noch mehr Timeouts aus.
+- Retries an einer verantwortlichen Stelle bündeln und zusätzliche Versuche begrenzen.
+- Kalenderaufrufe separat limitieren, Backoff mit Jitter nutzen und Aufträge später erneut versuchen.
 
-## Circuit Breaker: Fehlerkaskaden unterbrechen
+## Circuit Breaker
 
-- **Closed:** Aufrufe passieren; Fehlerquote oder Timeout-Schwellwert über ein Zeitfenster öffnet den Breaker
-- **Open:** Aufrufe werden sofort abgewiesen oder auf einen Fallback gelenkt; keine wartenden Threads für eine kaputte Abhängigkeit
-- Nach einer Abkühlzeit **half-open:** nur wenige Probeaufrufe zulassen
-- Probe erfolgreich: zurück zu closed; Probe scheitert: zurück zu open und erneut warten
-- **Cal.diy:** Kalenderaufrufe nach erschöpftem Retry-Budget pausieren; Buchung bleibt gespeichert, Synchronisation ausstehend
-- Breaker ersetzt weder Timeout noch Retry-Limit; sonst kann ein langsamer Aufruf den Zustand nie rechtzeitig melden
+- **Closed:** Aufrufe passieren; Fehlerquote oder Timeout-Schwellwert öffnet den Breaker.
+- **Open:** Aufrufe werden sofort abgewiesen oder auf einen Fallback gelenkt.
+- Nach einer Abkühlzeit lässt **half-open** nur wenige Probeaufrufe zu.
+- Probe erfolgreich: zurück zu closed; Probe scheitert: zurück zu open.
+- Der Breaker ersetzt weder Timeouts noch Retry-Limits.
+- Cal.diy: Kalenderaufrufe pausieren; Buchungen bleiben gespeichert und Synchronisationen ausstehend.
 
-## Bulkhead: Ressourcen voneinander isolieren
+## Bulkheads, Backpressure und Lastbegrenzung
 
-- Begrenzte, getrennte Pools oder Limits halten Fehler und Rückstau innerhalb einer Abhängigkeit
-- **Cal.diy:** eigener Worker-Pool für Kalenderaufrufe, damit ein langsamer Kalender keine E-Mails blockiert
-- Zusammen mit Queue und Lastgrenze verhindert Isolation nicht den Ausfall, aber dessen Ausbreitung
+- **Bulkhead:** getrennte Ressourcen halten Fehler und Rückstau innerhalb einer Abhängigkeit.
+- Cal.diy: Ein eigener Worker-Pool für Kalenderaufrufe verhindert, dass langsame Kalender E-Mails blockieren.
+- **Backpressure:** Verarbeitungskapazität an den Erzeuger zurückmelden.
+- **Load Shedding:** weniger wichtige Arbeit kontrolliert ablehnen oder pausieren.
+- Rate Limits und Quotas pro Mandant begrenzen Noisy Neighbours (Bezug Vorlesung 2).
+- Isolation begrenzt die Ausbreitung eines Ausfalls, verhindert ihn aber nicht.
 
-## Last begrenzen
+## Graceful Degradation und Entkopplung
 
-- Rate Limiting: Token Bucket, Leaky Bucket; pro Client, pro Mandant
-- Load Shedding: lieber einige ablehnen als alle verlieren
-- Backpressure: Druck zurück zum Erzeuger statt Puffer bis zum Absturz
-- Cal.diy: Limits pro Mandant; interaktive Buchungen vor großen Kalender-Nachsynchronisationen priorisieren
+- Kernfunktion erhalten und Komfortfunktion vorübergehend reduzieren.
+- Bei Kalenderausfall: Buchung lokal speichern und Synchronisation als ausstehend markieren.
+- Queue entkoppelt den Request-Pfad; Größenlimit begrenzt Wachstum.
+- Outbox speichert Buchungsänderung und Ereignis atomar (Bezug Vorlesung 2).
+- Dead Letter Queue isoliert dauerhaft fehlerhafte Nachrichten.
+- Duplikate bleiben möglich; externe Effekte brauchen stabile Auftrags-IDs und Deduplizierung, soweit die API das unterstützt.
+- Buchbare Slots müssen intern verbindlich verwaltet sein, bevor eine Buchung bestätigt wird.
 
-## Graceful Degradation
+## Stabilitätsmuster zusammenspielen lassen
 
-- Fallbacks: Cache, Default, reduzierte Funktion
-- Feature Flags und Kill Switches
-- Kernfunktion schützen, Komfortfunktion opfern
-- Cal.diy-Lehrmodell: Buchung speichern, Kalender-Synchronisation als „ausstehend“ anzeigen
-- Voraussetzung: Buchbare Slots werden verbindlich intern verwaltet; ohne verlässliche Verfügbarkeit keine Buchung bestätigen
+Für die externe Kalender-API:
 
-## Health Checks und Selbstheilung
+1. Gesamte Deadline und einzelne Timeouts setzen.
+2. Wenige Retries mit Backoff und Jitter zulassen.
+3. Wiederholbare Schreiboperationen idempotent machen.
+4. Circuit Breaker und begrenzte Queue einsetzen.
+5. Worker-Pool und Quota pro Mandant isolieren.
+6. Status fehlgeschlagener Synchronisationen sichtbar machen.
 
-- Liveness vs. Readiness
-- Orchestrierung: Neustart, Ersatz, Verschieben (Vertiefung in Vorlesung 6)
-- Gefahr: Health Checks, die selbst Last erzeugen oder kaskadieren
-- Startup-Verhalten: langsam anfahren, Warm-up
+Nicht jedes Muster gehört in jedes System; entscheidend sind Fehlerbild und Kosten.
 
-## Cal.diy: Health Check als Ausfallverstärker
+# Hochverfügbarkeit und Recovery
 
-- Die Datenbank ist kurz nicht erreichbar, die API-Prozesse selbst funktionieren
-- Prüft Liveness die Datenbank, werden alle API-Instanzen als defekt neu gestartet
-- Neue Verbindungen und Warm-up erzeugen Zusatzlast; der Datenbankfehler bleibt bestehen
-- **Liveness:** Ist der Prozess so defekt, dass ein Neustart helfen kann?
-- **Readiness:** Kann die Instanz den vorgesehenen Traffic bedienen? Nicht bereite Instanzen erhalten keinen regulären Traffic
-- Abhängigkeiten nicht pauschal prüfen: Ein ausgefallener Kalender darf die Buchungs-API unseres Lehrmodells nicht stilllegen
+## Vom kritischen Pfad zum Single Point of Failure
 
-## Entkopplung über Queues
+- Ein Single Point of Failure kann den gesamten Dienst stoppen.
+- Den kritischen Nutzerpfad identifizieren, nicht nur einzelne Komponenten zählen.
+- Beispiele: einzelne App-Instanz, Datenbank ohne Recovery-Plan oder Load Balancer ohne Ersatz.
+- Auch DNS, Secrets, Netzwerk und Deployment können kritisch sein.
 
-- Queue als Puffer zwischen Produzent und Konsument
-- Dead Letter Queues für Nachrichten, die nicht verarbeitbar sind
-- Outbox-Pattern: Datenbankänderung und Nachricht atomar
-- Nebenwirkungen: Latenz, Reihenfolge, Duplikate
+## Think–Pair–Share: Failure Domains
 
-## Cal.diy: Rückstand nach dem Kalenderausfall
+**Arbeitszeit: 5 Minuten — 1 allein, 2 zu zweit, 2 im Plenum.**
 
-- Während des Ausfalls sammeln sich Synchronisationsaufträge in der Outbox
-- Eine Queue puffert Last, erhöht aber nicht die Verarbeitungskapazität des Kalenders
-- Nach Wiederkehr nicht alles gleichzeitig senden: Parallelität begrenzen und langsam hochfahren
-- Eingangsrate dauerhaft größer als Verarbeitungsrate: Rückstand und Wartezeit wachsen weiter
-- Nachrichtenalter und Rückstand überwachen; Grenzen und Umgang mit veralteten Aufträgen festlegen
-- At-least-once: Absturz nach Versand, aber vor Quittierung kann Duplikate erzeugen
-- Für externe Effekte stabile Auftrags-IDs und Deduplizierung beim Empfänger nutzen, soweit dessen API das unterstützt
+Zwei App-Instanzen stehen im selben Rechenzentrum und nutzen denselben Load Balancer:
 
-## Anti-Patterns
+1. Gegen welche Ausfälle helfen die zwei Instanzen?
+2. Welche gemeinsamen Ausfälle bleiben möglich?
+3. Wie sähe eine zusätzliche Failure Domain aus?
 
-- Unendliche Retries ohne Backoff
-- Synchrone Ketten über viele Services
-- Gemeinsame Ressourcen ohne Bulkhead
-- Fehlende Timeouts, Standard-Timeouts von Bibliotheken
-- Tests nur für den Erfolgsfall
+Ergebnis: eine gemeinsame Fehlerursache und eine passende zusätzliche Failure Domain benennen.
 
-# Resilienz testen
+## Redundanz und Kapazitätsreserve
 
-## Resilienz testen
+- Redundanz über Prozesse, Hosts, Availability Zones und Regionen verteilen.
+- Active-Active und Active-Passive haben unterschiedliche Umschalt- und Konsistenzkosten.
+- Redundanz hilft nur, wenn Replikate keine gemeinsame Fehlerursache teilen.
+- Zwei gleich große API-Instanzen bedienen jeweils 60 % ihrer Verarbeitungskapazität.
+- Fällt eine aus, müsste die andere bei gleicher Last 120 % übernehmen.
+- Reserve vorhalten und überschüssige Last gezielt ablehnen; Autoscaling wirkt nicht sofort.
 
-- Chaos Engineering: Hypothese, Experiment, kleiner Blast Radius
-- Fault Injection: Latenz, Fehler, Ausfall einzelner Instanzen
-- Game Days: Ausfälle üben, Runbooks prüfen
-- Lasttests: Wo bricht das System, und wie?
-- Cal.diy: Kalenderantworten verzögern; prüfen, ob Buchungen weiter funktionieren und der Rückstand nach der Störung wieder abgebaut wird
+## Failover und Konsens
+
+- Ausfall erkennen: Heartbeats und Timeouts liefern nur Schätzungen.
+- Leader Election, Split Brain und Quorum bestimmen, wer schreiben darf.
+- Raft und Paxos koordinieren Konsens; sie erzeugen nicht automatisch Verfügbarkeit.
+- etcd, ZooKeeper und Datenbank-Cluster nutzen Konsensverfahren.
+- Sichere Schreibberechtigung ist Voraussetzung für Failover.
+
+## Cal.diy: Failover kann Doppelbuchungen ermöglichen
+
+- Der Datenbank-Leader ist vom Cluster getrennt, für einige API-Instanzen aber noch erreichbar.
+- Die Mehrheitsseite wählt einen neuen Leader; der alte hält sich weiterhin für zuständig.
+- Ohne Schreibschutz könnten beide Seiten denselben Slot bestätigen.
+- Ein Unique Constraint schützt nur innerhalb der jeweiligen Datenbankhistorie.
+- Ein Timeout beweist nicht, dass der alte Leader aufgehört hat zu schreiben.
+- **Fencing:** Den alten Leader zuverlässig vom Schreiben ausschließen, etwa durch Entzug des Storage-Zugriffs.
+- Eine unklare Seite muss Schreibzugriffe ablehnen.
+
+## Hochverfügbarkeit für zustandslose Services
+
+- Mehrere App-Instanzen hinter einem Load Balancer bereitstellen.
+- Instanzen enthalten keinen wichtigen, nur lokal gespeicherten Zustand.
+- Sessions sind geteilt oder signiert; Dateien liegen nicht nur auf lokaler Platte.
+- **Liveness:** Erkennt einen festgefahrenen Prozess; bei Fehler kann ein Neustart helfen.
+- **Readiness:** Nimmt nur bereite Instanzen in den regulären Traffic auf.
+- Temporäre Kalender-Ausfälle nicht als Liveness-Fehler behandeln.
+
+## Health Checks als Ausfallverstärker
+
+- Die Datenbank ist kurz nicht erreichbar, die API-Prozesse selbst funktionieren.
+- Prüft Liveness die Datenbank, werden alle API-Instanzen als defekt neu gestartet.
+- Neue Verbindungen und Warm-up erzeugen Zusatzlast; der Datenbankfehler bleibt bestehen.
+- Readiness nur an Abhängigkeiten ausrichten, die für den vorgesehenen Traffic notwendig sind.
+- Ein ausgefallener Kalender darf die Buchungs-API des Lehrmodells nicht stilllegen.
+
+## Datenbank-Replikation: Verfügbarkeit mit Nebenwirkungen
+
+- Der Primary verarbeitet Writes; Replicas bedienen je nach Aufbau Reads oder warten auf Failover.
+- Replikationsverzögerung kann einen gerade geschriebenen Datensatz unsichtbar machen.
+- Failover-Entscheidung, möglicher Datenverlust und Betrieb werden komplexer.
+- Kritische Reads nach einem Write gegebenenfalls an den Primary richten.
+- Mehr Replicas sind keine automatische Garantie für Hochverfügbarkeit.
+
+## Backup ist keine Replikation
+
+| Replikation | Backup |
+|---|---|
+| Hält Kopien je nach Verfahren synchron oder verzögert aktuell. | Bewahrt historische Wiederherstellungspunkte. |
+| Hilft beim Ausfall einer Instanz. | Hilft bei Löschung oder Beschädigung. |
+| Kann Fehler sofort mitkopieren. | Erlaubt die Rückkehr zu einem früheren Datenstand. |
+
+Beides kann nötig sein; Restore regelmäßig testen.
+
+## RTO und RPO bestimmen Recovery
+
+- **RTO (Recovery Time Objective):** maximal akzeptable Wiederherstellungsdauer.
+- **RPO (Recovery Point Objective):** maximal akzeptabler Datenverlust.
+- Beispiel: RTO 60 Minuten, RPO 5 Minuten.
+- Restore-Zeit und wiederhergestellter Datenstand müssen die Ziele erfüllen.
+- Schlüssel, Konfiguration, Verantwortlichkeiten und Runbooks gehören zum Restore.
+
+## Recovery-Ziele an einem Vorfall prüfen
+
+- 10:00 letztes erfolgreiches Backup; 10:20 Buchungen bestätigt; 10:25 Datenbankausfall.
+- Restore nur aus dem Backup: Bis zu 25 Minuten bestätigte Buchungen fehlen.
+- Asynchrone Replica mit 2 Minuten Lag: möglicher Verlust etwa der letzten 2 Minuten.
+- Synchrone Replica kann Datenverlust senken, bindet Writes aber an die Replica-Latenz.
+- Die fachlichen RPO-Ziele bestimmen die Strategie, nicht der Produktname.
+
+## Recovery-Pfad und RTO
+
+1. Ausfall erkennen und Primary als nicht verfügbar bewerten.
+2. Replica promoten oder Backup wiederherstellen.
+3. Verbindungen, Secrets und Schreibpfad umschalten.
+4. Integrität und Datenstand prüfen; Anwendung kontrolliert freigeben.
+
+Erkennung, Entscheidung, Umschaltung und Prüfung zählen vollständig zum RTO.
+
+## Failover oder Restore?
+
+| Situation | Erster möglicher Pfad | Zu prüfender Trade-off |
+|---|---|---|
+| Host ausgefallen, Daten intakt | Replica-Failover | Lag und mögliche Schreibverluste. |
+| Daten versehentlich gelöscht | Point-in-time Restore | RTO und Umfang verlorener Änderungen. |
+| Region verloren | Disaster-Recovery-Standby | Kosten, Umschaltung und Datenstand. |
+| Schaden wird repliziert | Isoliertes Backup | Wiederherstellung und saubere Umgebung. |
+
+Failover stellt den Dienst wieder bereit; Restore stellt einen früheren Datenstand wieder her.
+
+## Disaster Recovery und Ende-zu-Ende-Verfügbarkeit
+
+- Multi-Region: Backup-and-Restore, Pilot Light, Warm Standby oder Active-Active.
+- Je schneller die Übernahme, desto höher Kosten und Betriebsaufwand.
+- Verfügbarkeit ist Eigenschaft des gesamten kritischen Pfads.
+- Optionale Pfade wie Kalender, E-Mail und Analytics dürfen Buchungen nicht unnötig stoppen.
+- Einfaches, regelmäßig getestetes Recovery ist besser als ungetestetes Active-Active.
+
+# Resilienz testen und aus Vorfällen lernen
+
+## Resilienz ist keine Behauptung
+
+- Automatisierte Tests prüfen Fehlerfälle neben dem Erfolgsfall.
+- Last-, Stress- und Soak-Tests zeigen unterschiedliche Grenzen.
+- Fault Injection prüft Verhalten unter kontrollierten Störungen.
+- Restore-Tests und Failover-Übungen prüfen Wiederherstellbarkeit.
+- Game Days und Incident Reviews machen Abläufe lernbar.
+
+## Lasttests und Fehler-Injektion
+
+- **Lasttest:** erwartete Last; **Stresstest:** Last bis zur Grenze.
+- **Soak-Test:** Last über längere Zeit.
+- Erfolgsrate, p95-Latenz, Ressourcen, Queue-Länge und Datenkorrektheit beobachten.
+- Fehler injizieren: zusätzliche Latenz, Paketverlust, Verbindungsabbruch oder knapper Pool.
+- Scope und Abbruchbedingung vor jedem Experiment festlegen.
+
+## Chaos Engineering als überprüfbares Experiment
+
+- Hypothese: „Buchungen bleiben möglich, wenn die Kalender-API fünf Minuten ausfällt.“
+- Stabilen Ausgangszustand und messbare Signale festlegen.
+- Kleine Störung mit begrenztem Blast Radius injizieren.
+- Verhalten beobachten und Experiment bei Gefahr abbrechen.
+- Ergebnis auswerten und konkrete Verbesserung ableiten.
+
+```plantuml
+@startuml
+start
+:Hypothese formulieren;
+:Stabilen Ausgangszustand prüfen;
+:Kleine Störung injizieren;
+:Signale beobachten;
+if (Abbruchbedingung erreicht?) then (ja)
+  :Experiment abbrechen;
+else (nein)
+  :Ergebnis auswerten;
+endif
+stop
+@enduml
+```
 
 ## Aus Ausfällen lernen
 
-- Blameless Post-Mortems: Zeitachse, Ursachen, Maßnahmen
-- Ursachen sind selten eine einzelne: soziotechnische Sicht
-- Incident Management als Prozess (Vertiefung in Vorlesung 6)
-- Öffentliche Post-Mortems als Lernmaterial
+- Incident Response: Auswirkung bestimmen, Verantwortliche benennen und Schaden begrenzen.
+- Dienst wiederherstellen; Ursachenanalyse nicht vor die Stabilisierung stellen.
+- Zeitlinie, technische und organisatorische Faktoren dokumentieren.
+- Maßnahmen mit Verantwortlichen nachverfolgen.
+- Blameless Post-Mortems vermeiden Schuldzuweisung; „menschlicher Fehler“ ist keine ausreichende Ursachenanalyse.
+- Incident Management und Observability werden in Vorlesung 6 vertieft.
 
-## Fallbeispiel: GitHub-Ausfall vom 21. Oktober 2018
+## Fallbeispiel: GitHub-Ausfall im Oktober 2018
 
-- Wartung an optischer Netzwerktechnik unterbrach für 43 Sekunden die Verbindung zum primären Rechenzentrum
-- Orchestrator wählte per Quorum neue MySQL-Primaries an der Westküste; nach Wiederverbindung existierten nicht replizierte Schreibvorgänge an beiden Standorten
-- Sicherer Failback war nicht möglich; GitHub priorisierte Datenintegrität vor Verfügbarkeit und pausierte Webhooks sowie Pages-Builds
-- 24 Stunden und 11 Minuten degradierter Dienst; Wiederherstellung umfasste Backups, Replikationsaufbau und Abbau eines großen Rückstands
-- **Lernpunkt:** Failover-Regeln müssen zur Anwendungstopologie passen; Redundanz allein verhindert weder inkonsistente Zustände noch lange Wiederherstellung
-- GitHub kündigte u.a. regionale Grenzen für Primary-Failover, Active/Active/Active und mehr Fault-Injection an
+- Wartungsarbeiten unterbrachen für 43 Sekunden die Verbindung zum primären US-Ostküsten-Rechenzentrum.
+- Automatisches Failover machte die US-Westküste zur neuen Primary für mehrere Datenbankcluster.
+- Nach Wiederherstellung der Verbindung hatten beide Regionen nicht replizierte Writes.
+- Cross-Region-Latenz und inkonsistente Topologien beeinträchtigten Anwendungen weiter.
+- GitHub meldete insgesamt 24 Stunden und 11 Minuten beeinträchtigten Betrieb.
 
-Quelle: [October 21 post-incident analysis](https://github.blog/news-insights/company-news/oct21-post-incident-analysis/) (GitHub, 2018)
+## GitHub: Wiederherstellung und Lehren
 
-## Beispiel: Was passiert, wenn ...?
+- GitHub priorisierte Datenintegrität und stoppte teilweise schreibende Hintergrundjobs.
+- Restore großer MySQL-Cluster aus Backups dauerte Stunden; Replikationslag verzögerte die Rückkehr zur stabilen Topologie.
+- Nach Wiederanlauf warteten über fünf Millionen Webhook-Ereignisse und 80.000 Pages-Builds.
+- Maßnahmen: regionsübergreifendes Failover begrenzen, Multi-Datacenter-Redundanz ausbauen und Fehlerannahmen gezielt testen.
+- Quelle: [October 21 post-incident analysis](https://github.blog/news-insights/company-news/oct21-post-incident-analysis/) (GitHub, 2018).
 
-- Cal.diy-Lehrmodell aus Vorlesung 2: Buchungs-API, Datenbank, Outbox und Worker
-- Ausfallszenarien gemeinsam durchspielen: Buchungsantwort verloren, Kalender langsam, Datenbank-Leader isoliert, API-Instanz ausgefallen
-- Was passiert heute, was sollte passieren, welche Muster helfen?
+## Beispiel: Cal.diy bei Kalenderausfall
 
-# AI Engineering: Resilienz für KI-Komponenten
+- Die Kalender-API wird langsam; Buchungsanfragen und Synchronisationsaufträge treffen gleichzeitig ein.
+- Im Plenum durchspielen: Welche Funktion bleibt verfügbar, was wird begrenzt und was wird später nachgeholt?
+- Antwortverlust, Retry, Circuit Breaker und Queue-Rückstand in den Ablauf einbeziehen.
+- Schutzwirkung an Buchungserfolgsrate, Antwortzeit und Alter der ältesten Synchronisation messen.
 
-## Die Modell-API als unzuverlässige Abhängigkeit
+# AI Engineering – Resilienz für KI-Komponenten
 
-- Erweiterung unseres Cal.diy-Lehrmodells: optionale KI formuliert Terminbeschreibungen
-- Rate Limits (HTTP 429), Ausfälle, Latenzschwankungen, Modell-Deprecation
-- Inferenz hat ein eigenes Zeit- und Tokenbudget; interaktive Buchung nicht auf Modellantwort warten lassen
-- Fallback-Modell oder manuelle Eingabe nur innerhalb definierter Latenz- und Kostenbudgets
-- Kostenbudgets und Circuit Breaker begrenzen Retry-Schleifen und schützen vor Ausfällen beim Provider
+## Modell-APIs sind unzuverlässige Abhängigkeiten
+
+- Erweiterung des Cal.diy-Lehrmodells: Eine optionale KI formuliert Terminbeschreibungen.
+- Rate Limits (HTTP 429), Ausfälle, Latenzschwankungen und Modell-Deprecation einplanen.
+- Inferenz hat ein eigenes Zeit- und Tokenbudget; die interaktive Buchung wartet nicht auf die Modellantwort.
+- Fallback-Modell oder manuelle Eingabe nur innerhalb definierter Latenz- und Kostenbudgets nutzen.
+- Kostenbudgets und Circuit Breaker begrenzen Retry-Schleifen und schützen vor Provider-Ausfällen.
 
 ## KI-Retries: technisch oder inhaltlich?
 
-- Vorübergehende Transportfehler, HTTP 429/5xx: begrenzt wiederholen, `Retry-After` beachten, Backoff mit Jitter
-- Gemeinsame Deadline sowie Versuch-, Token- und Kostenlimit; keine Retry-Schichten stapeln
-- Timeout ist mehrdeutig: Provider kann die Generierung bereits ausgeführt und berechnet haben
-- Derselbe Prompt-Retry garantiert kein besseres Ergebnis; ungültige strukturierte Ausgabe höchstens gezielt reparieren und erneut validieren
-- Halluzination oder Verweigerung nicht blind wiederholen; Fallback auf manuelle Eingabe oder menschliche Prüfung
-- Tool-Aufrufe mit Seiteneffekten brauchen Idempotency Keys – ein Modell-Retry darf keine zweite Buchung auslösen
+- Vorübergehende Transportfehler und HTTP 429/5xx begrenzt wiederholen; `Retry-After` beachten.
+- Gemeinsame Deadline sowie Versuch-, Token- und Kostenlimit setzen; keine Retry-Schichten stapeln.
+- Timeout ist mehrdeutig: Der Provider kann die Generierung bereits ausgeführt und berechnet haben.
+- Derselbe Prompt-Retry garantiert kein besseres Ergebnis.
+- Ungültige strukturierte Ausgabe gezielt reparieren und erneut validieren.
+- Halluzination oder Verweigerung nicht blind wiederholen; manuelle Eingabe oder menschliche Prüfung anbieten.
+- Tool-Aufrufe mit Seiteneffekten brauchen Idempotency Keys, damit ein Modell-Retry keine zweite Buchung auslöst.
 
-## Nicht-deterministische Fehler
+## Fehler ohne Exception
 
-- Falsches Format, Halluzination, Verweigerung: Fehler ohne Exception
-- Ausgabevalidierung, strukturierte Ausgaben, Guardrails
-- Menschliche Eskalation als Fallback
+- Falsches Format, Halluzination oder Verweigerung können ohne technische Exception auftreten.
+- Strukturierte Ausgaben validieren und Ergebnisqualität als eigenes Signal behandeln.
+- Wiederholung mit verändertem Prompt ist ein neuer Versuch, keine Garantie.
+- Menschliche Eskalation oder regelbasierter Fallback kann geeigneter sein.
 
 ## Graceful Degradation mit KI
 
-- Das System muss ohne KI-Feature weiterlaufen
-- Gecachte oder regelbasierte Antworten als Fallback
-- Feature Flags pro Modell und Funktion
-- Cal.diy-Lehrmodell: Terminbeschreibung manuell eingeben statt generieren; Buchung bleibt möglich
-- Was der Nutzer erfahren soll, wenn die KI nicht verfügbar ist
+- Das Kernsystem muss ohne optionales KI-Feature weiterlaufen.
+- Gecachte oder regelbasierte Antworten können als Fallback dienen.
+- Feature Flags pro Modell und Funktion ermöglichen gezieltes Abschalten.
+- Cal.diy: Terminbeschreibung manuell eingeben statt generieren; die Buchung bleibt möglich.
+- Nutzer transparent informieren, wenn das KI-Feature nicht verfügbar ist.
 
+# Zusammenfassung und Transfer
+
+## Durchgängiges Schutzkonzept
+
+1. Nutzerziele über SLI und SLO messbar machen.
+2. Zeit- und Lastgrenzen setzen.
+3. Idempotenz und begrenzte Wiederholungen nutzen.
+4. Abhängigkeiten und Ressourcen isolieren.
+5. Redundanz, Backup und Recovery passend zum Ziel wählen.
+6. Fehlerverhalten testen und aus Vorfällen lernen.
+
+## Takeaways
+
+- Fehler und langsame Antworten müssen eingeplant werden.
+- Kaskaden entstehen, wenn Warten und Retries Ressourcen aufbrauchen.
+- Kernfunktion von optionalen Abhängigkeiten entkoppeln.
+- Redundanz ersetzt kein Backup; Backup ohne Restore-Test ist unbewiesen.
+- Resilienz zeigt sich im getesteten Verhalten unter Störungen.
+
+## Nächste Vorlesung
+
+- Architekturstile (Silas).
+- Wie schneiden und koppeln wir Systeme, damit Änderungen und Ausfälle begrenzt bleiben?
+
+# Literatur und Quellen
+
+## Literaturhinweise
+
+- Nygard: *Release It!*, 2. Auflage — Stabilitätsmuster und Anti-Patterns.
+- Beyer et al.: *Site Reliability Engineering* — SLOs, Fehlerbudgets und Überlast.
+- Kleppmann, Riccomini: *Designing Data-Intensive Applications*, 2. Auflage — Replikation und verteilte Systeme.
+- Google: *Building Secure and Reliable Systems* — Resilienz und Recovery.
+
+## Frei verfügbare Quellen
+
+- [Google SRE Book](https://sre.google/sre-book/table-of-contents/).
+- [Google SRE Workbook](https://sre.google/workbook/table-of-contents/).
+- [Building Secure and Reliable Systems](https://google.github.io/building-secure-and-reliable-systems/raw/toc.html).
+- [Cal.com Webhooks](https://cal.com/docs/developing/guides/automation/webhooks).
