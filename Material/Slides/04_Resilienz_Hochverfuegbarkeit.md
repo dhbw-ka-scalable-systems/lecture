@@ -87,6 +87,12 @@ Architekturziel: Nicht jeden Fehler verhindern, sondern seine Auswirkungen kontr
 | **Resilience** | Begrenzt das System Auswirkungen und erholt sich? |
 | **High Availability** | Welche Architektur reduziert ungeplante Nichtverfügbarkeit? |
 
+## High Availability
+
+- Ziel: (weitgehend) unterbrechungsfreier Betrieb des Systems auch bei Ausfällen
+- Verfügbarkeitsziel "x nines" (99,9 %, 99,999 %)
+- Redundanz + Fehlertoleranz/Fehlererkennung + kein Single Point of Failure
+- Wiederholung CAP Theorem: AP -> Available und partition tolerant, Datenkonsistenz lässt sich nicht immer einhalten
 
 ## Fault, Error, Failure
 
@@ -398,111 +404,110 @@ API --> Browser : ursprüngliches Ergebnis
 
 # Hochverfügbarkeit und Recovery
 
-## Vom kritischen Pfad zum Single Point of Failure
+## Single Point of Failure & Failure Domains
 
-- Ein Single Point of Failure kann den gesamten Dienst stoppen.
-- Den kritischen Nutzerpfad identifizieren, nicht nur einzelne Komponenten zählen.
-- Beispiele: einzelne App-Instanz, Datenbank ohne Recovery-Plan oder Load Balancer ohne Ersatz.
-- Auch DNS, Secrets, Netzwerk und Deployment können kritisch sein.
+- Nicht jede Komponente ist gleich wichtig
+  - Ausfall bestimmer Komponenten kann aber das gesamte System stoppen -> **Single Point of Failure** (SPoF)
+- SPoF typischerweise: Datenbank, einzelner App-Server
+- ABER: auch DNS, Internetanbindung etc. können problematisch sein.
+- **Failure Domain**: physicher/logischer Bereich, der von einem einzelnen HW oder Softwarefehler betroffen ist
+  - z.B. einzelner Server, komplettes Netzwerksegment, ganzes Rechenzentrum
+  - Auswirkungen sind vom Systemdesign abhängig!
 
-## Think–Pair–Share: Failure Domains
+## Aufgabe: Failure Domains
 
-**Arbeitszeit: 5 Minuten — 1 allein, 2 zu zweit, 2 im Plenum.**
+**Arbeitszeit: 5 Minuten — 2 allein, 3 zu zweit**
 
 Zwei App-Instanzen stehen im selben Rechenzentrum und nutzen denselben Load Balancer:
 
 1. Gegen welche Ausfälle helfen die zwei Instanzen?
 2. Welche gemeinsamen Ausfälle bleiben möglich?
-3. Wie sähe eine zusätzliche Failure Domain aus?
 
-Ergebnis: eine gemeinsame Fehlerursache und eine passende zusätzliche Failure Domain benennen.
+## Redundanz 
 
-## Redundanz und Kapazitätsreserve
+- **Redundanz**: Zusätzliche Systeme/Server/Komponenten, können im Fehlerfall übernehmen
+  - Verschiedene Ebenen: Prozesse, Container/Pods, Hosts, Regionen
+  - Abhängig von Ausfallsicherheitsanforderungen
+- Zustandslose Services lassen sich leichter replizieren
+  - Keine Synchronisation von Datenzugriffen notwendig
+  - Schneller Startzeiten möglich
+  - Generell: je weniger Zustand, desto einfacher
+    - Auch ein Grund Datenbanken pro Service aufzuteilen -> siehe Vorlesung 2
 
-- Redundanz über Prozesse, Hosts, Availability Zones und Regionen verteilen.
-- Active-Active und Active-Passive haben unterschiedliche Umschalt- und Konsistenzkosten.
-- Redundanz hilft nur, wenn Replikate keine gemeinsame Fehlerursache teilen.
-- Zwei gleich große API-Instanzen bedienen jeweils 60 % ihrer Verarbeitungskapazität.
-- Fällt eine aus, müsste die andere bei gleicher Last 120 % übernehmen.
-- Reserve vorhalten und überschüssige Last gezielt ablehnen; Autoscaling wirkt nicht sofort.
+## Redundanz Active-Active
 
-## Failover und Konsens
+- mehrere Replikate sind gleichzeitig aktiv und teilen die Last
+  - Sehr schnelle Umschaltzeit
+  - Komplexität durch Synchronisierung und Datenkonsistenz
+  - bestehende Replikate müssen potenziell mit mehr Last umgehen können
+  - Beispiel: zwei Instanzen, eine Fällt aus -> eine Instanz muss alleine die Last bewältigen können
 
-- Ausfall erkennen: Heartbeats und Timeouts liefern nur Schätzungen.
-- Leader Election, Split Brain und Quorum bestimmen, wer schreiben darf.
-- Raft und Paxos koordinieren Konsens; sie erzeugen nicht automatisch Verfügbarkeit.
-- etcd, ZooKeeper und Datenbank-Cluster nutzen Konsensverfahren.
-- Sichere Schreibberechtigung ist Voraussetzung für Failover.
+## Redundanz Active-Passive
 
-## Cal.diy: Failover kann Doppelbuchungen ermöglichen
+- "Standby" Redundanz
+- Primärsystem bearbeitet im Normalbetrieb alle Anfragen
+- Sekundärsystem (für 1:1 Ersatz identisch) ist im Normalbetrieb aus bzw. im Standby
+  - Springt im Fehlerfall ein
+  - höhere Umschaltzeiten als Active-Active
+  - Keine Datenkonsistenzprobleme, aber potenziell veraltete Daten
+  - Verschiedene Umsetzungsmöglichkeiten: Hot/Warm/Cold -> wie aktiv ist das System, wie aktuell die Daten
 
-- Der Datenbank-Leader ist vom Cluster getrennt, für einige API-Instanzen aber noch erreichbar.
-- Die Mehrheitsseite wählt einen neuen Leader; der alte hält sich weiterhin für zuständig.
-- Ohne Schreibschutz könnten beide Seiten denselben Slot bestätigen.
-- Ein Unique Constraint schützt nur innerhalb der jeweiligen Datenbankhistorie.
-- Ein Timeout beweist nicht, dass der alte Leader aufgehört hat zu schreiben.
-- **Fencing:** Den alten Leader zuverlässig vom Schreiben ausschließen, etwa durch Entzug des Storage-Zugriffs.
-- Eine unklare Seite muss Schreibzugriffe ablehnen.
+## Failover
 
-## Hochverfügbarkeit für zustandslose Services
+- Für Umschaltung auf redundante System ist Erkennung von Ausfall notwendig -> **Failover**
+- Passive Überwachung durch Load-Balancer / Proxy: erkennen von hohen Timeouts, ausbleibenden Antworten
+- **Heartbeat*: regelmäßiges kurzes Signal, dass System aktiv ist
+  - Heißt aber nicht unbedingt, dass das System auch voll funktionsfähig ist!
+  - Kann um detailliertere Healthcheck-Informationen erweitert werden
+  - n verpasste Heartbeats als Schwelle zum Umschalten
+- Ausbleibende Heartbeats sind nicht unbedingt ein Ausfall des Systems, Ausfall des Netzwerks oder des Heartbeat-Services sind auch möglich!
 
-- Mehrere App-Instanzen hinter einem Load Balancer bereitstellen.
-- Instanzen enthalten keinen wichtigen, nur lokal gespeicherten Zustand.
-- Sessions sind geteilt oder signiert; Dateien liegen nicht nur auf lokaler Platte.
-- **Liveness:** Erkennt einen festgefahrenen Prozess; bei Fehler kann ein Neustart helfen.
-- **Readiness:** Nimmt nur bereite Instanzen in den regulären Traffic auf.
-- Temporäre Kalender-Ausfälle nicht als Liveness-Fehler behandeln.
+## Split Brain 
 
-## Health Checks als Ausfallverstärker
+- Verteiltes System teilt sich in voneinander isolierte Teilsysteme
+  - z.B. fehlerhaft ein Ausfall diagnostiziert und redundantes System aktiv ohne Kommunikation zwischen beiden
+- Beide Teilsysteme (theoretisch auch mehr als 2, aber sehr unwahrscheinlich) wissen nichts voneinander und greifen schreibend ohne synchronsiation auf gleiche Daten
+- Datenkonsistenz wird nicht mehr sichergestellt
+- Bei Wiederherstellung der Kommunikation müssen Konflikte aufgelöst werden, das ist nicht immer ohne Datenverlust möglich
+- Auswirkungen abhängig von Datenarchitetkur!
 
-- Die Datenbank ist kurz nicht erreichbar, die API-Prozesse selbst funktionieren.
-- Prüft Liveness die Datenbank, werden alle API-Instanzen als defekt neu gestartet.
-- Neue Verbindungen und Warm-up erzeugen Zusatzlast; der Datenbankfehler bleibt bestehen.
-- Readiness nur an Abhängigkeiten ausrichten, die für den vorgesehenen Traffic notwendig sind.
-- Ein ausgefallener Kalender darf die Buchungs-API des Lehrmodells nicht stilllegen.
+## Zusammenspiel mit Datenarchitektur
 
-## Datenbank-Replikation: Verfügbarkeit mit Nebenwirkungen
+- Datenmodell, Aufteilung der Daten nach Services, Replikation + Sharding haben große Auswikrungen auf High Availability
+- Einige Entscheidungen in der Datenarchitektur können HA erleichtern oder erschweren
+- Teil-Ausfälle eines Systems können dafür sorgen dass temporär veraltete Daten vorhanden sind oder sogar Daten verloren gehen
 
-- Der Primary verarbeitet Writes; Replicas bedienen je nach Aufbau Reads oder warten auf Failover.
-- Replikationsverzögerung kann einen gerade geschriebenen Datensatz unsichtbar machen.
-- Failover-Entscheidung, möglicher Datenverlust und Betrieb werden komplexer.
-- Kritische Reads nach einem Write gegebenenfalls an den Primary richten.
-- Mehr Replicas sind keine automatische Garantie für Hochverfügbarkeit.
+## Disaster Recovery
 
-## Backup ist keine Replikation
-
-| Replikation | Backup |
-|---|---|
-| Hält Kopien je nach Verfahren synchron oder verzögert aktuell. | Bewahrt historische Wiederherstellungspunkte. |
-| Hilft beim Ausfall einer Instanz. | Hilft bei Löschung oder Beschädigung. |
-| Kann Fehler sofort mitkopieren. | Erlaubt die Rückkehr zu einem früheren Datenstand. |
-
-Beides kann nötig sein; Restore regelmäßig testen.
-
-## RTO und RPO bestimmen Recovery
-
+- Strategien, Prozesse, Werkzeuge zur Wiederherstellung nach einem schwerwiegenden Ausfall
+  - Ziel: Business Continuity
 - **RTO (Recovery Time Objective):** maximal akzeptable Wiederherstellungsdauer.
 - **RPO (Recovery Point Objective):** maximal akzeptabler Datenverlust.
-- Beispiel: RTO 60 Minuten, RPO 5 Minuten.
-- Restore-Zeit und wiederhergestellter Datenstand müssen die Ziele erfüllen.
-- Schlüssel, Konfiguration, Verantwortlichkeiten und Runbooks gehören zum Restore.
+- Disaser Recovery kommt zum Einsatz wenn High Availability / Redundanz nicht mehr reicht
+  - Große Ausfälle z.B. ganz Rechenzentren, Cloud-Regionen
+  - Naturkatastrophen
+  - Cyberangriffe
+- Nicht immer ohne Datenverlust möglich
 
-## Recovery-Ziele an einem Vorfall prüfen
+## Backup
 
-- 10:00 letztes erfolgreiches Backup; 10:20 Buchungen bestätigt; 10:25 Datenbankausfall.
-- Restore nur aus dem Backup: Bis zu 25 Minuten bestätigte Buchungen fehlen.
-- Asynchrone Replica mit 2 Minuten Lag: möglicher Verlust etwa der letzten 2 Minuten.
-- Synchrone Replica kann Datenverlust senken, bindet Writes aber an die Replica-Latenz.
-- Die fachlichen RPO-Ziele bestimmen die Strategie, nicht der Produktname.
+Ohne Backup kein Disaster Recovery!  
 
-## Recovery-Pfad und RTO
+**3-2-1 Regel**
 
-1. Ausfall erkennen und Primary als nicht verfügbar bewerten.
-2. Replica promoten oder Backup wiederherstellen.
-3. Verbindungen, Secrets und Schreibpfad umschalten.
-4. Integrität und Datenstand prüfen; Anwendung kontrolliert freigeben.
+- 3 Kopien der Daten
+- 2 verschiedene Medien
+- 1 Offsite Backup
 
-Erkennung, Entscheidung, Umschaltung und Prüfung zählen vollständig zum RTO.
+Replikation ersetzt kein Backup und umgekehrt. 
+
+## Disaster Recovery Umsetzung
+
+Je nach Anforderungen und Budget kann Infrastruktur wie bei Replikation auch, schon vorhanden sein -> eine Art der Active-Passive Redundanz, idR aber keine automatische Umschaltung sondern menschliches Eingreifen.
+(Je nach Auslegung kann auch ein Active-Active System als Maßnahme zur Disaster Recovery eingestuft werden)
+
+- Wichtig sind klare Prozesse, Zuständigkeiten und dokumentiertes Vorgehen
+- DR Pläne müssen regelmäßig geübt werden
 
 ## Failover oder Restore?
 
@@ -515,13 +520,6 @@ Erkennung, Entscheidung, Umschaltung und Prüfung zählen vollständig zum RTO.
 
 Failover stellt den Dienst wieder bereit; Restore stellt einen früheren Datenstand wieder her.
 
-## Disaster Recovery und Ende-zu-Ende-Verfügbarkeit
-
-- Multi-Region: Backup-and-Restore, Pilot Light, Warm Standby oder Active-Active.
-- Je schneller die Übernahme, desto höher Kosten und Betriebsaufwand.
-- Verfügbarkeit ist Eigenschaft des gesamten kritischen Pfads.
-- Optionale Pfade wie Kalender, E-Mail und Analytics dürfen Buchungen nicht unnötig stoppen.
-- Einfaches, regelmäßig getestetes Recovery ist besser als ungetestetes Active-Active.
 
 # Resilienz testen und aus Vorfällen lernen
 
@@ -654,7 +652,6 @@ stop
 ## Nächste Vorlesung
 
 - Architekturstile (Silas).
-- Wie schneiden und koppeln wir Systeme, damit Änderungen und Ausfälle begrenzt bleiben?
 
 # Literatur und Quellen
 
