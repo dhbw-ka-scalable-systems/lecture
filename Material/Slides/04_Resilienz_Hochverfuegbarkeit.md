@@ -344,37 +344,57 @@ API --> Browser : ursprüngliches Ergebnis
   - Circuit Breaker kann zentral prüfen, ob der Dienst wieder verfügbar ist und dann die ersten Requests wieder durchlassen
   - **half-open** nur wenige Probeaufrufe zu, wenn Dienst stabil ist, wird der Breaker wieder geschlossen
 
-## Bulkheads, Backpressure und Lastbegrenzung
+## Bulkheads: Ressourcen isolieren
 
-- **Bulkhead:** getrennte Ressourcen halten Fehler und Rückstau innerhalb einer Abhängigkeit.
-- Cal.diy: Ein eigener Worker-Pool für Kalenderaufrufe verhindert, dass langsame Kalender E-Mails blockieren.
-- **Backpressure:** Verarbeitungskapazität an den Erzeuger zurückmelden.
-- **Load Shedding:** weniger wichtige Arbeit kontrolliert ablehnen oder pausieren.
-- Rate Limits und Quotas pro Mandant begrenzen Noisy Neighbours (Bezug Vorlesung 2).
-- Isolation begrenzt die Ausbreitung eines Ausfalls, verhindert ihn aber nicht.
+- Getrennte Ressourcen-Pools um Fehler zu isolieren
+  - isolierte Thread-Pools / Container / VMs / Hosts 
+  - z.B. Trennung von Kalender-Worker und E-Mail Versand
+- Hohe Auslastung in einem Pool hat keine Auswirkungen auf andere Pools
+- Ausfälle können auf einzelne Systemteile begrenzt werden
+- Aufteilung der Ressourcenpools können wichtige Systemteile bevorzugen
+- ABER: Ressourcen werden nicht so effizient genutzt
 
-## Graceful Degradation und Entkopplung
 
-- Kernfunktion erhalten und Komfortfunktion vorübergehend reduzieren.
-- Bei Kalenderausfall: Buchung lokal speichern und Synchronisation als ausstehend markieren.
-- Queue entkoppelt den Request-Pfad; Größenlimit begrenzt Wachstum.
-- Outbox speichert Buchungsänderung und Ereignis atomar (Bezug Vorlesung 2).
-- Dead Letter Queue isoliert dauerhaft fehlerhafte Nachrichten.
-- Duplikate bleiben möglich; externe Effekte brauchen stabile Auftrags-IDs und Deduplizierung, soweit die API das unterstützt.
-- Buchbare Slots müssen intern verbindlich verwaltet sein, bevor eine Buchung bestätigt wird.
+## Backpressure: Erzeuger bremsen
 
-## Stabilitätsmuster zusammenspielen lassen
+- Grundlegendes Prinzip zur Synchronisation von Sender (producer) und Empfänger (consumer)
+  - Problem: producer erzeugt schneller als consumer verarbeiten kann und sort dort für hohe Last und Rückstau
+- **Lösung**: consumer steuert Interaktion
+  - Pull-Prinzip: consumer fordert aktiv Daten an, producer liefert nur so viel wie angefordert
+  - Buffer: producer schreibt in beschränkten Buffer, consumer liest daraus, wenn Buffer voll kann producer drosseln oder pausieren
+  - Drop-Prinzip: consumer kann bei voller Queue Aufträge verwerfen oder ablehnen
 
-Für die externe Kalender-API:
+## Rate Limits & Quotas
 
-1. Gesamte Deadline und einzelne Timeouts setzen.
-2. Wenige Retries mit Backoff und Jitter zulassen.
-3. Wiederholbare Schreiboperationen idempotent machen.
-4. Circuit Breaker und begrenzte Queue einsetzen.
-5. Worker-Pool und Quota pro Mandant isolieren.
-6. Status fehlgeschlagener Synchronisationen sichtbar machen.
+- **Rate Limits:** Begrenzen von Anfrage
+  - z.B. pro User, pro IP-Adresse, pro Funktion ...
+  - Auch als Schutz vor übermäßigen Kosten und Missbrauch -> z.B. LLM Tokens
+  - Verschiedene Rate-Limit-Strategien: Token Bucket, Fixed Window, Sliding Window
+  - Strategien sind haben verschiedene Vor- und Nachteile und sind abhängig von der Art der Last (z.B. gleichmäßig vs. bursts)
+- **Quotas:** Allgemeinere Ressourcen-Kontingente
+  - z.B. Speicherplatz, CPU-Zeit
+  - Oft über längere Zeiträume (z.B. pro Tag, pro Monat) und nicht nur kurzfristig wie Rate Limits
+  - Durchsetzen von Abo-Stufen und allgemeine Fairness
 
-Nicht jedes Muster gehört in jedes System; entscheidend sind Fehlerbild und Kosten.
+## Load Shedding 
+
+- **Load Shedding:** weniger wichtige Anfragen geziehlt ablehnen, um Kernfunktionalität zu schützen
+  - Hauptfunktion bleibt so lange wie möglich verfügbar oder wichtigste Kunden können weiterhin bedient werden
+  - z.B. Analyse, Reporting, Hintergrundjobs zuerst ablehnen um Ressourcen für Kernfunktion zu schützen
+  - Komplex: aktuelle Last messen/einschätzen, Prioritäten bestimmen
+
+## Graceful Degradation
+
+- System fällt nicht komplett aus, sondern reduziert Funktionalität
+  - ähnlich wie Load Shedding, oft aber vorgelagert
+    - Keine aktive Ablehnung von Anfragen, sondern Reduktion der Qualität
+    - Abschaltung von optionalen Features
+  - z.B. UI reduziert Aktualisierungshäufigkeit, um Datenbank zu schonen
+
+## Stabilitätsmuster in der Praxis
+
+- Kombination dieser Muster, für ein wirklich stabiles System
+- Auswahl abhängig von Zugriffsmustern, Systemdesign, externen Abhängigkeiten, Last, Fehlerverhalten, ...
 
 # Hochverfügbarkeit und Recovery
 
