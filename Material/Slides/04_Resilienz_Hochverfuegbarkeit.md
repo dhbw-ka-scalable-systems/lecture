@@ -15,8 +15,6 @@ toc: true
 section-titles: true
 ...
 
-# Einstieg: Wenn Abhängigkeiten ausfallen
-
 ## Heute
 
 - Zuverlässigkeit aus Nutzersicht messen.
@@ -69,26 +67,26 @@ Worker --> External : nachgelagert übertragen
 
 ## Fehler sind normal
 
-- Prozesse stürzen ab; Netzwerke verlieren Pakete.
-- Abhängigkeiten werden langsam oder sind nicht erreichbar.
-- Verbindungspools und Queues laufen voll.
-- Konfigurationen oder Releases führen neue Fehler ein.
-- Gemeinsame Fehlerursachen wie Zone, Deployment oder Bug überwinden naive Redundanz.
-- Last übersteigt zeitweise die verfügbare Kapazität.
+- Wir müssen mit Fehlern rechnen
+  - Prozesse stürzen ab
+  - Netzwerke verlieren Pakete
+  - externe Dienste sind langsam/überlastet/nicht erreichbar
+  - Fehler beim Ausrollen neuer Versionen
+  - Programmierfehler, Bugs
+  - Komplettausfall Infrastruktur
 
 Architekturziel: Nicht jeden Fehler verhindern, sondern seine Auswirkungen kontrollieren.
 
 ## Reliability, Availability und Resilienz
 
-| Begriff | Leitfrage |
+| Begriff | Definition |
 |---|---|
-| **Reliability** | Erfüllt das System seine Funktion über einen Zeitraum korrekt? |
 | **Availability** | Ist der Dienst zum benötigten Zeitpunkt nutzbar? |
+| **Reliability** | Erfüllt das System seine Funktion über einen Zeitraum korrekt? |
 | **Fault Tolerance** | Arbeitet das System trotz bestimmter Fehler weiter? |
 | **Resilience** | Begrenzt das System Auswirkungen und erholt sich? |
 | **High Availability** | Welche Architektur reduziert ungeplante Nichtverfügbarkeit? |
 
-Die Begriffe hängen zusammen, beschreiben aber unterschiedliche Eigenschaften.
 
 ## Fault, Error, Failure
 
@@ -99,28 +97,36 @@ Die Begriffe hängen zusammen, beschreiben aber unterschiedliche Eigenschaften.
 
 ## Partielle Fehler und Latenz
 
+- Grundlage: verteiltes System, keine monolithische Anwendung
 - Ein Teil des Systems funktioniert, während eine andere Komponente langsam oder ausgefallen ist.
 - Oft ist unklar, ob eine entfernte Komponente defekt oder nur langsam ist.
 - Eine Antwort nach 30 Sekunden kann technisch erfolgreich, für den Nutzer aber unbrauchbar sein.
 - Wartende Requests belegen Threads, Verbindungen und Speicher.
 
-Folgerung: Auch erfolgreiche Aufrufe brauchen eine Zeitgrenze.
+Folge: Auch erfolgreiche Aufrufe brauchen eine Zeitgrenze.
 
 ## Verfügbarkeit messen
 
-- Eine Prozentzahl ist nur aussagekräftig, wenn Leistung und Messzeitraum festgelegt sind.
+- Eine Prozentzahl ist nur aussagekräftig, wenn _Leistung_ und _Messzeitraum_ festgelegt sind.
 - **Zeitbasiert:** Anteil der Zeit, in der der Dienst die vereinbarte Funktion erfüllt.
 - **Anfragebasiert:** Anteil erfolgreicher Anfragen; ein anderes SLI als Uptime in Minuten.
-- Geplante Wartung zählt nur dann nicht als Ausfall, wenn die Messdefinition sie ausdrücklich ausschließt.
+- Geplante Wartung zählt nur dann nicht als Ausfall, wenn die Messdefinition sie ausdrücklich ausschließt!
+
+## SLI, SLO und SLA
+
+- **SLI (Service Level Indicator):** gemessene Größe aus Nutzersicht, z.B. Anteil erfolgreicher Buchungen oder Antwortzeit.
+- **SLO (Service Level Objective):** Zielwert für ein SLI in einem festgelegten Messfenster, z.B. 99,9 % über 28 Tage.
+- **SLA (Service Level Agreement):** vertragliche Vereinbarung mit möglichen Konsequenzen.
+- Ein internes SLO sollte ausreichend Puffer zum vertraglichen SLA lassen!
 
 ## Die Neunen in Zeit übersetzt
 
 - Annahme: 365 Tage im Jahr, 24/7-Betrieb; geplante Wartung ist nicht ausgenommen.
-- **99 %:** höchstens 3 Tage, 15 Stunden und 36 Minuten Ausfall pro Jahr.
-- **99,9 %:** höchstens 8 Stunden und 46 Minuten Ausfall pro Jahr.
-- **99,99 %:** höchstens 52 Minuten und 34 Sekunden Ausfall pro Jahr.
-- **99,999 %:** höchstens 5 Minuten und 15 Sekunden Ausfall pro Jahr.
-- Jede zusätzliche Neun erhöht den Aufwand deutlich.
+- **99 %:** <= 3 Tage, 15 Stunden und 36 Minuten
+- **99,9 %:** <= 8 Stunden und 46 Minuten 
+- **99,99 %:** <= 52 Minuten und 34 Sekunden
+- **99,999 %:** <= 5 Minuten und 15 Sekunden
+- Jede zusätzliche Neun erhöht den Aufwand deutlich!
 
 ## MTBF und MTTR
 
@@ -128,61 +134,41 @@ Folgerung: Auch erfolgreiche Aufrufe brauchen eine Zeitgrenze.
 - Längere MTBF bedeutet, dass Ausfälle seltener auftreten; sie beschreibt nicht deren Dauer.
 - **MTTR (Mean Time To Repair/Restore):** durchschnittliche Dauer bis zur Wiederherstellung.
 - Messbeginn und -ende festlegen, zum Beispiel vom Beginn der Beeinträchtigung bis zur Wiederherstellung.
-- Näherung für einen reparierbaren Dienst: Verfügbarkeit ≈ MTBF / (MTBF + MTTR).
+- Näherung für einen reparierbaren Dienst: $Verfuegbarkeit ≈ MTBF / (MTBF + MTTR)$.
 - Bei MTBF 100 Stunden und MTTR 1 Stunde ergibt sich ungefähr 99,0 % Verfügbarkeit.
 
-## SLI, SLO und SLA
-
-- **SLI (Service Level Indicator):** gemessene Größe aus Nutzersicht.
-- **SLO (Service Level Objective):** Zielwert für ein SLI in einem festgelegten Messfenster.
-- **SLA (Service Level Agreement):** vertragliche Vereinbarung mit möglichen Konsequenzen.
-- Ein internes SLO sollte ausreichend Puffer zum vertraglichen SLA lassen.
-- Messgröße, Grundgesamtheit, Messfenster und Behandlung von Fehlern genau festlegen.
 
 ## Unser Buchungs-SLI: Was zählt als Erfolg?
 
-- **Grundgesamtheit:** eindeutige, gültige Buchungsabsichten für einen zuvor als frei angezeigten Slot.
-- Pro Idempotency Key wird nur eine Absicht gezählt; technische Retries zählen nicht erneut.
-- Ungültige Eingaben, fehlende Berechtigung und Health Checks sind ausgeschlossen.
-- **Gutes Ereignis:** Buchung dauerhaft gespeichert und Bestätigung innerhalb von 2 Sekunden zurückgegeben.
+- **Grundgesamtheit:** eindeutige, gültige _Buchungsabsichten_ für einen _zuvor als frei angezeigten_ Slot.
+  - technische Retries zählen nicht erneut
+  - Ungültige Eingaben, fehlende Berechtigungen und Health Checks sind ausgeschlossen
+- **Gutes Ereignis:** Buchung dauerhaft gespeichert und Bestätigung innerhalb von _2 Sekunden_ zurückgegeben.
 - Fehler, Timeout, verspätete oder fehlende Bestätigung zählen als schlecht.
-- **Messfenster:** rollierende 28 Tage; mindestens 99,9 % der Buchungsabsichten sollen gut sein.
-
-## Think–Pair–Share: ein brauchbares SLO
-
-**Arbeitszeit: 6 Minuten — 2 allein, 2 zu zweit, 2 im Plenum.**
-
-Für die Buchungsbestätigung:
-
-1. Was zählt als gültige Anfrage und als Erfolg?
-2. Welche Antwortfrist und welches Messfenster sind sinnvoll?
-3. Gehört die Kalender-Synchronisation in dieses SLI oder braucht sie ein eigenes?
-
-Ergebnis: ein begründetes SLI mit Zielwert; die Synchronisation wird als eigene Funktion abgegrenzt.
+- **Messfenster:** rollierende 28 Tage; mindestens 99,9 % der Buchungsabsichten sollen gut sein
 
 ## Fehlerbudget berechnen
 
-- Im 28-Tage-Fenster gibt es 50.000 eindeutige Buchungsabsichten: 49.960 gute und 40 schlechte.
-- **SLI:** 49.960 / 50.000 = 99,92 %; **SLO:** 99,9 %.
-- Fehlerbudget: höchstens 0,1 % × 50.000 = 50 schlechte Buchungen.
-- Verbraucht sind 40 von 50 Ereignissen, also 80 %; zehn bleiben übrig.
+- Annahme: In 28-Tagen gibt es 50.000 eindeutige Buchungsabsichten: 49.960 gut, 40 schlecht
+  - **SLI:** $49.960 / 50.000 = 99,92 \%$
+  - **Fehlerbudget:** höchstens $0,1 \% × 50.000 = 50$ schlechte Buchungen.
+- Verbraucht sind 40 von 50 Ereignissen 80 %
 - Das Budget zählt Nutzerereignisse, nicht Minuten; ein später Retry macht einen Fehler nicht rückwirkend gut.
-- Fehlerbudgets helfen, Zuverlässigkeit und Änderungsfrequenz abzuwägen.
 
 ## Verfügbarkeit verketteter Komponenten
 
 - Sind mehrere Komponenten für eine Anfrage zwingend nötig, müssen alle verfügbar sein.
-- Bei unabhängigen Ausfällen multiplizieren sich die Verfügbarkeiten: API 99,9 % × Datenbank 99,9 % ≈ 99,80 %.
-- Abhängigkeiten und gemeinsame Fehlerursachen machen die Unabhängigkeitsannahme oft unzutreffend.
+- Angenommen Ausfälle sind unabhängig voneinander: Multiplikation der Verfügbarkeiten API $99,9 \% × Datenbank 99,9 \% ≈ 99,801 \% Gesamt$.
+  - In der Praxis sind Fehler nur selten wirklich unabhängig
+  - Gemeinsame Fehlerursachen oder Verstärkung durch Kaskaden reduzieren Gesamtverfügbarkeit deutlich
 - Redundanz kann Verfügbarkeit verbessern, beseitigt aber keine gemeinsamen Fehlerursachen.
 
 ## Warum verteilte Systeme scheitern
 
-- Netzwerke verzögern oder verlieren Nachrichten; eine Antwort ist auch bei erfolgreicher Verarbeitung nicht garantiert.
-- Uhren driften und sind nicht perfekt synchronisiert.
-- Zeitstempel allein liefern keine sichere globale Reihenfolge.
-- Teilausfälle sind normal: Ein Knoten kann unerreichbar sein, während der Rest weiterläuft.
-- Ein Timeout zeigt nicht, ob der andere Knoten abgestürzt ist oder nur langsam antwortet.
+- Verteilte Systeme sind komplex
+- Fehler in einzelnen Komponenten können immer auftreten
+- Fehler in Infrastruktur und Netzwerk können immer auftreten
+- Zusammenspiel sorgt für unvorhergesehene Effekte^
 
 ## Fallacies of Distributed Computing (1/2)
 
@@ -203,27 +189,26 @@ Peter Deutschs Annahmen, die beim Entwurf verteilter Systeme oft falsch sind:
 ## Ausfallarten
 
 - **Crash:** Eine Komponente stoppt.
-- **Omission:** Nachrichten werden nicht gesendet oder empfangen.
+- **Omission:** Nachrichten werden nicht gesendet oder empfangen (ausgelassen).
 - **Timing:** Antworten kommen zu spät oder außerhalb vereinbarter Grenzen.
-- **Byzantine:** Eine Komponente verhält sich beliebig oder widersprüchlich.
 - **Korrelierte, kaskadierende und metastabile Ausfälle** können lokale Fehler verstärken.
 
 # Fehlerkaskaden verhindern
 
 ## Vom langsamen Kalender zur Kaskade
 
-1. Die Kalender-API wird langsam.
-2. Requests warten und belegen Verbindungen.
-3. Der Verbindungspool der Anwendung läuft voll.
-4. Clients und Worker wiederholen Aufrufe.
-5. Last und Queue-Rückstand wachsen.
-6. Schließlich wird auch die Buchungs-API unbenutzbar.
+1. Die Kalender-API wird langsam
+2. Requests warten und belegen Verbindungen
+3. Der Verbindungspool der Anwendung läuft voll
+4. Clients und Worker wiederholen Aufrufe
+5. Last und Queue-Rückstand wachsen
+6. Schließlich wird auch die Buchungs-API unbenutzbar
 
 Bleibt ein überlastetes System auch nach Ende des Auslösers instabil, spricht man von einem metastabilen Ausfall.
 
-## Think–Pair–Share: Wo zuerst eingreifen?
+## Aufgabe: Wo zuerst eingreifen?
 
-**Arbeitszeit: 5 Minuten — 1 allein, 2 zu zweit, 2 im Plenum.**
+**Arbeitszeit: 5 Minuten — 2 allein, 3 zu zweit**
 
 Im Kalender-Szenario:
 
@@ -233,21 +218,77 @@ Im Kalender-Szenario:
 
 Ergebnis: eine erste Maßnahme mit kurzer Begründung.
 
-## Timeouts und Deadlines
 
-- Jeder Netzwerkaufruf braucht ein begrenztes Zeitbudget.
-- Ein Timeout begrenzt das Warten, sagt aber nicht, ob die Operation ausgeführt wurde.
-- Eine Deadline begrenzt die Gesamtdauer des Requests.
-- Unteraufrufe erhalten nur die verbleibende Zeit.
-- Abbruch und Deadline müssen bis zur Arbeit weitergereicht werden, damit Ressourcen frei werden.
-- Ein Abbruch macht bereits gespeicherte Buchungen nicht rückgängig.
+## Timeouts: ein Zeitbudget für den gesamten Request
 
-## Cal.diy: Timeout heißt Ergebnis unbekannt
+- Jede Netzwerkoperation braucht Zeit, Timeouts verhindern, dass ein Request unbegrenzt blockiert.
+- Beispiel: Für die interaktive Buchung stehen insgesamt 2 Sekunden zur Verfügung
+  - Aufrufe, Unteraufrufe und Wiederholungen teilen dieses Budget
+  - Verbindungsaufbau und Antwortzeit sind einbezogen
+- Verbleibende Deadline an nachgelagerte Dienste weitergeben
+- Schwierig: Wahl der Timeouts
+  - zu kurz: unnötige Wiederholungen, erzeugen unnötige Last
+  - zu lang: blockieren Ressourcen und erhöhen die Latenz
 
+## Wiederholung HTTP Status Codes
+
+- **1xx:** Informational
+- **2xx:** Success
+- **3xx:** Redirection
+- **4xx:** Client Error
+- **5xx:** Server Error
+
+## Retries
+
+- Retries sind nur bei transienten (vorübergehenden) Fehlern sinnvoll, zum Beispiel:
+  - Netzwerkfehler
+  - HTTP 503 Service Unavailable
+  - HTTP 429 Too Many Requests (mit `Retry-After`)
+- Nicht ohne Änderung wiederholen bei:
+  - HTTP 400 Bad Request
+  - HTTP 401 Unauthorized
+  - HTTP 403 Forbidden
+  - HTTP 404 Not Found
+  - HTTP 409 Conflict (z.B. Doppelbuchung)
+  - HTTP 422 Unprocessable Entity (ungültige Eingabe)
+- Status Codes sind nur eine Auswahl. Wichtig ist, dass alle Komponenten sich bei der Semantik der Codes einig sind
+
+## Backoff und Jitter
+
+- **Backoff:** Wartezeit zwischen Wiederholungen, um Lastspitzen zu vermeiden.
+  - **Fixed Backoff:** feste Wartezeit, z.B. 2s zwischen jedem Versuch
+  - Bei HTTP 429 `Retry-After` berücksichtigen, sofern vorhanden
+  - **Linear Backoff:** feste Wartezeit, z.B. 1s, 2s, 3s
+  - **Exponential Backoff:** exponentiell steigende Wartezeit, z.B. 1s, 2s, 4s, 8s
+- **Jitter:** Wartezeiten zufällig streuen, damit Clients nicht gleichzeitig erneut anfragen
+  - Insbesondere bei vielen Clients sinnvoll, ansonsten können sich Lastspitzen zyklisch wiederholen
+- Retry nur wenn Operation mindestens idempotent
+
+## Idempotenz macht Wiederholung sicher
+
+- **Idempotent:** egal ob 1..n mal ausgeführt
+- **Safe:** egal ob 0..n mal ausgeführt
+- Festlegung für den Anwendungsfall und Nutzung der bekannten HTTP Semantik
+  - idempotent: GET, PUT, DELETE, HEAD, OPTIONS
+  - safe: GET, HEAD, OPTIONS
+  - Immer nur bei richtiger Implementierung!
+- Beispiel: Buchung stornieren ist idempotent; neue Buchung anlegen nicht ohne weiteres.
+
+## Cal.diy: Timeout bei Buchung
+
+- Buchung per POST and die API
 - Die Datenbank bestätigt den Commit, aber die Antwort erreicht den Gast nicht.
 - Nach Ablauf des Timeouts zeigt der Browser einen unklaren Status.
-- **Timeout bedeutet: Ergebnis unbekannt, nicht: Operation nicht ausgeführt.**
-- Ein erneuter Request kann die fachliche Aktion nochmals auslösen.
+- Wie können wir trotz nicht idempotenter HTTP Operation die Aktion als solches korrekt wiederholen?
+
+
+## Lösung: Idempotency Key
+
+- Der Client erzeugt einen eindeutigen Schlüssel pro Buchungsabsicht
+- Die API speichert den Schlüssel zusammen mit dem Ergebnis
+- Bei einem Retry kann die API erkennen, ob der Schlüssel bereits verarbeitet wurde und das ursprüngliche Ergebnis zurückgeben
+- Erlaubt es auch nicht idempotente HTTP Operationen wie POST sicher zu wiederholen
+
 
 ## Cal.diy: Verlorene Antwort und sicherer Retry
 
@@ -269,59 +310,39 @@ API --> Browser : ursprüngliches Ergebnis
 @enduml
 ```
 
-## Timeouts: ein Zeitbudget für den gesamten Request
-
-- Für die interaktive Buchung stehen insgesamt 2 Sekunden zur Verfügung.
-- Aufrufe und Wiederholungen teilen dieses Budget; nicht jeder Versuch bekommt neue 2 Sekunden.
-- Verbindungsaufbau und Antwortzeit in das Zeitbudget einbeziehen.
-- Verbleibende Deadline an nachgelagerte Dienste weitergeben.
-- Zu kurze Timeouts erzeugen unnötige Wiederholungen; zu lange binden Ressourcen.
-
-## Retries, Backoff und Jitter
-
-- Nur geeignete, vorübergehende Fehler wiederholen, zum Beispiel Verbindungsfehler oder HTTP 503.
-- Ungültige Eingaben oder einen belegten Slot nicht unverändert erneut senden.
-- Bei HTTP 429 `Retry-After` berücksichtigen, sofern vorhanden.
-- **Exponential Backoff:** Wartezeit zwischen Versuchen vergrößern und begrenzen.
-- **Jitter:** Wartezeiten zufällig streuen, damit Clients nicht gleichzeitig erneut anfragen.
-- Versuchszahl und Gesamtdeadline begrenzen; ohne Restbudget abbrechen.
-- Schreiboperationen nur wiederholen, wenn ihre Wirkung gegen Duplikate abgesichert ist.
-
-## Idempotenz macht Wiederholung sicher
-
-- Idempotent: Mehrfaches Ausführen hat dieselbe beabsichtigte Wirkung wie einmaliges Ausführen.
-- „Buchung auf storniert setzen“ kann natürlich idempotent sein; „neue Buchung anlegen“ ist es nicht.
-- Der Client erzeugt einen Idempotency Key pro Buchungsabsicht und behält ihn bei Retries bei.
-- Die API ordnet dem Schlüssel das ursprüngliche Ergebnis zu und liefert es erneut.
-- Eine neue Buchungsabsicht erhält einen neuen Schlüssel.
-- Ein Unique Constraint für den Slot bleibt nötig: Zwei Absichten dürfen ihn nicht doppelt belegen (Bezug Vorlesung 2).
-
 ## Idempotency Keys korrekt absichern
 
-- Schlüssel an Mandant und Operation binden; Berechtigungen bei jedem Request prüfen.
-- Request-Inhalt vergleichen; gleicher Schlüssel mit anderem Inhalt wird abgelehnt.
-- Schlüssel, Buchung, Outbox-Eintrag und Ergebnis atomar speichern.
-- Eindeutiger Schlüssel und Transaktionslogik koordinieren gleichzeitige Wiederholungen.
-- Solange der erste Request läuft, begrenzt warten oder „noch in Bearbeitung“ zurückgeben.
-- Aufbewahrungsdauer festlegen; nach Ablauf ist ein alter Retry nicht mehr zuverlässig deduplizierbar.
+- Keys müssen zufällig erzeugt werden und eindeutig sein
+- Übereinstimmung mit Idempotency Key in der Datenbank darf vorhandene Sicherheitsüberprüfungen nicht umgehen!
+- Prüfen ob die Operation wirklich die gleiche ist, ansonsten ablehnen
+- Speichern von Buchung + Schlüssel + Outbox Eintrag muss über Transaktion gesichert werden
 
-## Cal.diy: Wenn Retries den Kalenderausfall verstärken
+## Cal.diy: Wenn Retries den Kalenderausfall verstärken (1)
 
-- Der Kalenderdienst wird langsam; der Worker wiederholt die Übertragung.
-- Worker, HTTP-Client und Proxy versuchen jeweils bis zu dreimal, inklusive Erstversuch.
-- Im schlechtesten Fall entstehen 3³ = 27 Kalenderaufrufe für einen Auftrag.
-- Zusätzliche Last verzögert Antworten weiter und löst noch mehr Timeouts aus.
-- Retries an einer verantwortlichen Stelle bündeln und zusätzliche Versuche begrenzen.
-- Kalenderaufrufe separat limitieren, Backoff mit Jitter nutzen und Aufträge später erneut versuchen.
+- Der Kalenderdienst wird langsam; der Outbox Worker wiederholt die Übertragung
+  - HTTP-Client im Worker selbst nutz interne Retry-Logik
+  - HTTP Proxy der für die Verbindung genutzt wird, hat ebenfalls Retry-Logik
+  - **worst case** $3^3 = 27$ Kalenderaufrufe für einen Auftrag
+- Jeder Retry erzeugt Last und blockiert Ressourcen
+  - Kann Antworten weiter verzögern
+  - Queues wachsen und blockieren weitere Aufträge
+  - Löst weitere Timeouts auch für andere Clients aus
+
+## Cal.diy: Wenn Retries den Kalenderausfall verstärken (2)
+
+- Besser:
+  - Retries an einer einzigen verantwortlichen Stelle bündeln und zusätzliche Versuche insgesamt begrenzen
+  - Backoff mit Jitter vermeiden Lastspitzen
+  - Insbesondere exponentielles Backoff kann dem System Zeit geben, sich zu erholen
+
 
 ## Circuit Breaker
 
-- **Closed:** Aufrufe passieren; Fehlerquote oder Timeout-Schwellwert öffnet den Breaker.
-- **Open:** Aufrufe werden sofort abgewiesen oder auf einen Fallback gelenkt.
-- Nach einer Abkühlzeit lässt **half-open** nur wenige Probeaufrufe zu.
-- Probe erfolgreich: zurück zu closed; Probe scheitert: zurück zu open.
-- Der Breaker ersetzt weder Timeouts noch Retry-Limits.
-- Cal.diy: Kalenderaufrufe pausieren; Buchungen bleiben gespeichert und Synchronisationen ausstehend.
+- Schutz vor Fehlerkaskaden und übermäßiger Last
+- **Closed:** Aufrufe passieren; Fehlerquote oder Timeout-Schwellwert öffnet den Breaker
+- **Open:** Aufrufe werden sofort abgewiesen oder auf einen Fallback gelenkt
+  - Circuit Breaker kann zentral prüfen, ob der Dienst wieder verfügbar ist und dann die ersten Requests wieder durchlassen
+  - **half-open** nur wenige Probeaufrufe zu, wenn Dienst stabil ist, wird der Breaker wieder geschlossen
 
 ## Bulkheads, Backpressure und Lastbegrenzung
 
