@@ -31,7 +31,7 @@ Requires PowerShell 7 (`pwsh`, the script uses `ForEach-Object -Parallel`), pand
 ## Content conventions
 
 - Slide and note content is German with the English technical terms the field uses. README, `TODO.md`, comments and commit messages are English.
-- One file per session, numbered `NN_Topic.md` in session order. Each content session ends with an "AI Engineering" section, a summary and a pointer to the next session.
+- One file per session, numbered `NN_Topic.md` in session order. Each content session ends with a summary and a pointer to the next session. An "AI Engineering" section is optional and goes in where it fits the topic.
 - No exercises or assignments; each content session has one "Beispiel" slide that the lecturer works through in plenum.
 - Each topic has one owning session; other sessions reference it as "(Vertiefung in Vorlesung N)" or "(Bezug Vorlesung N)". When moving content, fix these references and the cross-reference list in `TODO.md`.
 - The three module-handbook references on the "Literatur: Modulhandbuch" slide in session 1 are fixed; anything else is "weiterführende Literatur".
