@@ -84,6 +84,5 @@ Further sources, referenced where they fit:
 ## Open
 
 - [ ] Exam: format, duration, aids, weighting, date (TODO markers in sessions 1 and 7). Session 7 is scheduled one or two weeks before it.
-- [ ] Diagrams: latency table done (session 1); remaining candidates are marked in the outlines (style comparison table, LLM reference architecture)
-- [ ] Session 4: pick the public post-mortem for the case slide
+- [ ] Diagrams: none yet; candidates are marked in the outlines (latency table, style comparison table, LLM reference architecture)
 - [ ] Session 6: pick the stack for the observability demo
