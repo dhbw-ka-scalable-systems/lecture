@@ -22,11 +22,11 @@ Fridays 8:30 to 11:45 with a 15-minute break, weekly from 2026-10-02. Session 7 
 
 | # | Date | File | Topic | VE | Who | Status |
 |---|------|------|-------|----|-----|--------|
-| 1 | 2026-10-02 | `Material/Slides/01_Grundlagen_Systemdesign.md` | Organisatorisches, Grundlagen Systemdesign | 4 | Si | outline |
-| 2 | 2026-10-09 | `Material/Slides/02_Datenarchitektur_Mandantenfaehigkeit_Security.md` | Datenarchitektur, Mandantenfähigkeit & System-Security | 4 | Lu | outline |
-| 3 | 2026-10-16 | `Material/Slides/03_Technische_Entscheidungsfindung.md` | Trade-offs, Stakeholder & Kontext | 4 | Si | outline |
-| 4 | 2026-10-23 | `Material/Slides/04_Resilienz_Hochverfuegbarkeit.md` | Resilienz, Fehlertoleranz & Hochverfügbarkeit | 4 | Lu | outline |
-| 5 | 2026-10-30 | `Material/Slides/05_Architekturstile.md` | Architekturstile | 4 | Si | outline |
+| 1 | 2026-10-02 | `Material/Slides/01_Grundlagen_Systemdesign.md` | Organisatorisches, Grundlagen Systemdesign | 4 | Si | done |
+| 2 | 2026-10-09 | `Material/Slides/02_Datenarchitektur_Mandantenfaehigkeit_Security.md` | Datenarchitektur, Mandantenfähigkeit & System-Security | 4 | Lu | done |
+| 3 | 2026-10-16 | `Material/Slides/03_Technische_Entscheidungsfindung.md` | Trade-offs, Stakeholder & Kontext | 4 | Si | done |
+| 4 | 2026-10-23 | `Material/Slides/04_Resilienz_Hochverfuegbarkeit.md` | Resilienz, Fehlertoleranz & Hochverfügbarkeit | 4 | Lu | done |
+| 5 | 2026-10-30 | `Material/Slides/05_Architekturstile.md` | Architekturstile | 4 | Si | draft |
 | 6 | 2026-11-06 | `Material/Slides/06_Betrieb_Observability_Deployment.md` | Betrieb, Observability & Deployment | 4 | Lu | outline |
 | 7 | before the exam | `Material/Slides/07_Wiederholung_Klausurvorbereitung.md` | Wiederholung und Klausurvorbereitung | 2 | Lu + Si | outline |
 
@@ -40,7 +40,7 @@ Status values: outline, draft, review, done.
 | 2 | Daten und Sicherheit für KI-Systeme | Vector data and RAG pipelines as new data types, tenant isolation in indexes, data leaving the system, prompt injection |
 | 3 | Entscheidungen rund um KI-Komponenten | When to use an LLM at all, API vs. self-hosting as an ADR, LLMs as a tool in the decision process and their limits |
 | 4 | Resilienz für KI-Komponenten | Model APIs as unreliable dependencies, non-deterministic failures, degrading gracefully without the AI feature |
-| 5 | Architektur von KI-Systemen | Reference architecture, RAG, tool use, routing, guardrails, model gateway, async processing, MCP |
+| 5 | no own section, one slide "Was ändert KI daran?" | Code gets cheap, the cut and the boundaries do not; LLMs default to the most common style; generated code keeps module boundaries only when they are enforced |
 | 6 | Betrieb von KI-Systemen | Token, cost and quality metrics, tracing prompt chains, evals as a deployment gate, canary and shadow mode for models |
 | 7 | in "Roter Faden" | Recap only |
 
@@ -49,9 +49,9 @@ Status values: outline, draft, review, done.
 The outlines say where a topic is deepened later or was introduced before. Keep these in sync when moving content.
 
 - Session 1 is the map: its building-block catalog touches most later topics briefly (what, what for, cost, alternatives) and points to the owning session: data, replication, sharding, CAP/PACELC, ACID, NoSQL, 2PC/saga, TLS (2); unreliable networks, rate limiting, idempotency, backpressure, service mesh (4); API gateway, microservices, event-driven, gRPC, Conway's Law (5); API vs. self-hosting (3)
-- Session 2 previews the saga pattern (5) and outbox plus idempotency (4). CQRS and event sourcing live in session 5 only, schema migrations in session 6 only.
+- Session 2 previews outbox plus idempotency (4) and the data disintegrators/integrators trade-off; saga is not in session 2, session 5 introduces it. CQRS and event sourcing live in session 5 only, schema migrations in session 6 only.
 - Sessions 4 and 6 share SLOs, post-mortems, health checks and orchestration
-- Session 5 reuses the ADR format from session 3 in its worked example
+- Session 5 runs the Anmeldesystem from session 3 through all styles (modulith, microservices, event-driven, serverless) and reuses the ADR format in Aufgabe 3. It picks up what session 1 deferred to it: Monolith vs. Microservices, Kopplung/Kohäsion, API Gateway, Event-Driven, Conway's Law. It refers forward to session 6 for tracing and pipelines. It has no AI-engineering section.
 
 ## Conventions
 
@@ -61,7 +61,9 @@ The outlines say where a topic is deepened later or was introduced before. Keep 
 - Author notes go into HTML comments (`<!-- TODO: ... -->`) after a blank line; pandoc drops them from the PDF.
 - Frontmatter: copy `template_Slides.md`, set `title`, `topic` (`scalable_systems_1_N`) and `author`. The author is the one lecturer who holds the session; only session 7 names both.
 - Each lecturer introduces themselves in their first session: Silas in session 1, Lukas in session 2.
-- No exercises or assignments. Each content session has one "Beispiel" slide instead: a case the lecturer works through with the students in plenum.
+- Exercises and worked examples are part of every content session. Short "Aufgabe" slides (5 minutes, alone then in pairs; sessions 2 and 4) and a large design task with the sequence Aufgabe, Ziel, Besprechung, "eine mögliche Lösung", "die Entscheidungen dahinter" (20 minutes; sessions 3 and 5). Budget them in the time plan on top of the slides, roughly 2 minutes per slide.
+- Each session carries a running example (Cal.com in 2 and 4, the Anmeldesystem in 3 and 5) and shows it in diagrams. Prefer PlantUML blocks over images.
+- Sessions 1 to 4 have been held and are the pattern for structure, density and exercises.
 - Images and diagrams go to `Material/Slides/media/`; PlantUML code blocks are rendered by the `pandoc-plantuml` filter.
 - Build: `./build.ps1 <file>` for one file, `./build.ps1` for everything. CI builds on every push and creates a release on the default branch.
 
@@ -84,5 +86,6 @@ Further sources, referenced where they fit:
 ## Open
 
 - [ ] Exam: format, duration, aids, weighting, date (TODO markers in sessions 1 and 7). Session 7 is scheduled one or two weeks before it.
-- [ ] Diagrams: none yet; candidates are marked in the outlines (latency table, style comparison table, LLM reference architecture)
+- [ ] Session 1 has too few pictures: add diagrams or charts to the building-block slides (load balancer, CDN, caching, DNS, APIs, queues) for the next run; latency table still open
+- [ ] Session 5 is a draft: review the slides, prune or extend, then set status to review
 - [ ] Session 6: pick the stack for the observability demo

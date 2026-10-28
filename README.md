@@ -10,6 +10,8 @@ For general questions use [Discussions](https://github.com/dhbw-ka-scalable-syst
 
 ## Structure
 
+Each session is four lecture units of slides with a running example, diagrams and short exercises worked on during the session. The PDFs are the slides shown in class, including the exercise tasks and one possible solution each.
+
 - `Material/Slides/NN_Topic.md`: one file per session, built to beamer slides
 - `Material/Notes/`: notes, built to plain PDFs
 - `TODO.md`: session plan, conventions and open points

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Lecture material, not software: slides and notes for "Skalierbare Systeme" at DHBW Karlsruhe, written in pandoc Markdown and compiled to PDF with LaTeX. The default branch is the year (`2026`). `TODO.md` is the working plan: session table with dates and lecturers, the AI-engineering thread, cross references between sessions, conventions and open points. Read it before changing content. The tooling is shared with the Web Engineering lecture (github.com/DHBW-KA-Webengineering/Lecture_Webengineering), which is the pattern for anything not yet present here, such as exercises or media.
+Lecture material, not software: slides and notes for "Skalierbare Systeme" at DHBW Karlsruhe, written in pandoc Markdown and compiled to PDF with LaTeX. The default branch is the year (`2026`). `TODO.md` is the working plan: session table with dates and lecturers, the AI-engineering thread, cross references between sessions, conventions and open points. Read it before changing content. Sessions 1 to 4 have been held and are the pattern for new or reworked sessions: structure, density, diagrams, exercises. The tooling is shared with the Web Engineering lecture (github.com/DHBW-KA-Webengineering/Lecture_Webengineering), which is the pattern for tooling questions not covered here.
 
 ## Build
 
@@ -32,6 +32,8 @@ Requires PowerShell 7 (`pwsh`, the script uses `ForEach-Object -Parallel`), pand
 
 - Slide and note content is German with the English technical terms the field uses. README, `TODO.md`, comments and commit messages are English.
 - One file per session, numbered `NN_Topic.md` in session order. Each content session ends with a summary and a pointer to the next session. An "AI Engineering" section is optional and goes in where it fits the topic.
-- No exercises or assignments; each content session has one "Beispiel" slide that the lecturer works through in plenum.
+- Exercises and worked examples are part of every content session, not an add-on. Two forms are established: short "Aufgabe" slides (5 minutes, alone then in pairs, as in sessions 2 and 4) and a large design task with the sequence Aufgabe, Ziel, Besprechung, "eine mögliche Lösung", "die Entscheidungen dahinter" (20 minutes, as in sessions 3 and 5). Budget them in the time plan on top of the slides; plan slides at roughly 2 minutes each.
+- A session carries a running example (Cal.com in 2 and 4, the Anmeldesystem in 3 and 5) and shows it in diagrams; a session without pictures is not finished. Prefer PlantUML blocks over images because they are versioned and rebuilt.
+- Framing of the whole lecture: the job market changes through AI, so juniors must do more than write code. Content is pitched at what juniors need in their first years; no session is a full course on its topic.
 - Each topic has one owning session; other sessions reference it as "(Vertiefung in Vorlesung N)" or "(Bezug Vorlesung N)". When moving content, fix these references and the cross-reference list in `TODO.md`.
 - The three module-handbook references on the "Literatur: Modulhandbuch" slide in session 1 are fixed; anything else is "weiterführende Literatur".
