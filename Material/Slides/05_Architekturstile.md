@@ -280,7 +280,7 @@ rectangle "Adapter (eingehend)" {
   [REST-Controller] as R
   [Scheduler / CLI] as C
 }
-hexagon "Fachkern Anmeldung\nPlatzvergabe, Regeln\nkennt weder HTTP noch SQL" as H
+rectangle "Fachkern Anmeldung\nPlatzvergabe, Regeln\nkennt weder HTTP noch SQL" as H
 rectangle "Adapter (ausgehend)" {
   [PostgreSQL-Repository] as P
   [In-Memory-Repository (Test)] as T
