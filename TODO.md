@@ -27,7 +27,7 @@ Fridays 8:30 to 11:45 with a 15-minute break, weekly from 2026-10-02. Session 7 
 | 3 | 2026-10-16 | `Material/Slides/03_Technische_Entscheidungsfindung.md` | Trade-offs, Stakeholder & Kontext | 4 | Si | outline |
 | 4 | 2026-10-23 | `Material/Slides/04_Resilienz_Hochverfuegbarkeit.md` | Resilienz, Fehlertoleranz & Hochverfügbarkeit | 4 | Lu | outline |
 | 5 | 2026-10-30 | `Material/Slides/05_Architekturstile.md` | Architekturstile | 4 | Si | outline |
-| 6 | 2026-11-06 | `Material/Slides/06_Betrieb_Observability_Deployment.md` | Betrieb, Observability & Deployment | 4 | Lu | outline |
+| 6 | 2026-11-06 | `Material/Slides/06_Betrieb_Observability_Deployment.md` | Betrieb, Observability & Deployment | 4 | Lu | draft |
 | 7 | before the exam | `Material/Slides/07_Wiederholung_Klausurvorbereitung.md` | Wiederholung und Klausurvorbereitung | 2 | Lu + Si | outline |
 
 Status values: outline, draft, review, done.
@@ -61,7 +61,7 @@ The outlines say where a topic is deepened later or was introduced before. Keep 
 - Author notes go into HTML comments (`<!-- TODO: ... -->`) after a blank line; pandoc drops them from the PDF.
 - Frontmatter: copy `template_Slides.md`, set `title`, `topic` (`scalable_systems_1_N`) and `author`. The author is the one lecturer who holds the session; only session 7 names both.
 - Each lecturer introduces themselves in their first session: Silas in session 1, Lukas in session 2.
-- No exercises or assignments. Each content session has one "Beispiel" slide instead: a case the lecturer works through with the students in plenum.
+- No take-home assignments. Each content session has one "Beispiel" slide worked through in plenum; brief in-class discussion tasks are welcome.
 - Images and diagrams go to `Material/Slides/media/`; PlantUML code blocks are rendered by the `pandoc-plantuml` filter.
 - Build: `./build.ps1 <file>` for one file, `./build.ps1` for everything. CI builds on every push and creates a release on the default branch.
 
@@ -85,4 +85,3 @@ Further sources, referenced where they fit:
 
 - [ ] Exam: format, duration, aids, weighting, date (TODO markers in sessions 1 and 7). Session 7 is scheduled one or two weeks before it.
 - [ ] Diagrams: none yet; candidates are marked in the outlines (latency table, style comparison table, LLM reference architecture)
-- [ ] Session 6: pick the stack for the observability demo
