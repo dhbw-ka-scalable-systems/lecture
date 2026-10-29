@@ -15,63 +15,28 @@ toc: true
 section-titles: true
 ...
 
-# Einstieg
-
-## Heute
-
-- Grundbegriffe: Architekturstil, Kopplung, Kohäsion
-- Monolithische Stile: Schichten, Modular Monolith
-- Verteilte Stile: Services, Microservices, Event-Driven, Serverless
-- Stile vergleichen, wählen, migrieren
-
-## Lernziele
-
-- Die wichtigsten Architekturstile
-  - Schnitt, Deployment, Daten und Kommunikation unterscheiden
-- Den Stil eines bestehenden Systems erkennen und seine Spielregeln einhalten
-- Stärken und Schwächen eines Stils gegen Qualitätsattribute bewerten
-- Für einen Kontext einen Stil wählen und die Entscheidung begründen (ADR)
-- Wissen, wie man von einem Stil zum nächsten kommt und was das kostet
-
-## Warum Architekturstile?
-
-- Ihr steigt in bestehende Systeme ein, selten auf die grüne Wiese
-- Jeder Stil hat Spielregeln; wer sie nicht kennt, bricht sie versehentlich
-- KI schreibt den Code - Welche Teile, welche Grenzen, welche Kommunikation bleibt eure Entscheidung
-
-## Was wir schon haben
-
-- Vorlesung 1: Monolith vs. Microservices, synchron vs. asynchron, Queues und Logs, API Gateway
-- Vorlesung 2: Outbox Pattern, Daten trennen oder zusammenhalten, Mandantenmodelle
-- Vorlesung 3: Architekturentscheidungen, Trade-offs, ADRs
-- Vorlesung 4: unzuverlässige Netze, Timeouts, Circuit Breaker, Bulkheads
-
-\rightarrow{} Heute werden die Bausteine zum Gesamtbild: Welche Grundstruktur hat ein System, und warum?
-
 # Grundbegriffe
 
 ## Was ist ein Architekturstil?
 
 Die Grundstruktur eines Systems: Welche Teile gibt es, wie sind sie geschnitten, wie reden sie miteinander?
 
-- Baustein, Pattern, Stil:
-  - **Baustein:** Load Balancer, Queue, Cache (Vorlesung 1)
-  - **Pattern:** Lösung für ein Teilproblem: Outbox, Circuit Breaker, Saga
-  - **Stil:** Struktur des Ganzen: Schichten, Microservices, Event-Driven
-- Reale Systeme mischen Stile; "der Stil" beschreibt den dominanten Aufbau
+- **Baustein:** Load Balancer, Queue, Cache (Vorlesung 1)
+- **Pattern:** Lösung für ein Teilproblem: Outbox, Circuit Breaker, Saga
+- **Stil:** Struktur des Ganzen: Schichten, Microservices, Event-Driven (reale Systeme mischen Stile)
 
-## Vier Fragen, die einen Stil ausmachen
+## Vier Faktoren eines Stils
 
 1. **Schnitt:** Nach welchem Kriterium ist der Code zerlegt: nach Technik oder nach Fachlichkeit?
 2. **Deployment:** Wie viele unabhängig deploybare Einheiten gibt es: eine oder viele?
 3. **Daten:** Eine gemeinsame Datenbank oder Daten je Teil?
 4. **Kommunikation:** Methodenaufruf, synchroner Aufruf über das Netz oder asynchrone Nachricht?
 
-- Die vier Antworten zusammen sind der Stil, der Rest sind Varianten
+\rightarrow{} Die vier Antworten zusammen sind der Stil
 
-\rightarrow{} Dieselben vier Fragen helfen, ein fremdes System in der ersten Woche einzuordnen
+> Dieselben vier Fragen helfen, ein fremdes System in der ersten Woche einzuordnen
 
-## Fachlich vs. technisch partitioniert
+## Schnitt (Beispiel Anmeldesystem für Lehrveranstaltungen)
 
 ```{.plantuml height=70%}
 @startuml
@@ -100,28 +65,28 @@ rectangle "Technisch partitioniert" {
 
 ## Kopplung
 
-Kopplung: Wie viel muss sich an A ändern, wenn B sich ändert, und was passiert mit A, wenn B ausfällt?
+> Wie viel muss sich an A ändern, wenn B sich ändert
+> Was passiert mit A, wenn B ausfällt?
 
-- Vier Arten, die im Alltag zählen:
-  - **Code:** A importiert B und kennt dessen Datenstrukturen
-  - **Daten:** A und B schreiben dieselbe Tabelle
-  - **Zeit:** A wartet synchron auf B; ist B langsam, ist A langsam
-  - **Deployment:** A und B können nur gemeinsam ausgeliefert werden
+- **Code:** A importiert B und kennt dessen Datenstrukturen
+- **Daten:** A und B schreiben dieselbe Tabelle
+- **Zeit:** A wartet synchron auf B; ist B langsam, ist A langsam
+- **Deployment:** A und B können nur gemeinsam ausgeliefert werden
 
 \rightarrow{} Kopplung ist nicht schlecht; sie soll dort liegen, wo sie günstig ist: innerhalb einer Fachlichkeit, nicht quer darüber
 
 ## Kohäsion
 
-Kohäsion: Wie sehr gehört zusammen, was in einem Teil zusammenliegt?
+> Wie sehr gehört zusammen, was in einem Teil zusammenliegt?
 
-- Hoch: Das Modul "Anmeldung" enthält alles, was eine Anmeldung ausmacht: Regeln, Plätze, Status
-- Niedrig: Ein Modul "Utils" mit Datumsformatierung, PDF-Export und Mailversand
+- **Hoch**: Das Modul "Anmeldung" enthält alles, was eine Anmeldung ausmacht: Regeln, Plätze, Status
+- **Niedrig**: Ein Modul "Utils" mit Datumsformatierung, PDF-Export und Mailversand
 
 Prüffrage: Wenn sich die x ändert, wie viele Teile muss ich anfassen?
 
 \rightarrow{} Faustregel: hohe Kohäsion innen, lose Kopplung außen
 
-## Zur Erinnerung: das Anmeldesystem (Vorlesung 3)
+## Wiederholung Vorlesung 3: Anmeldesystem für Lehrveranstaltungen
 
 ```{.plantuml height=85%}
 @startuml
@@ -154,14 +119,16 @@ P -right-> M : at-least-once
 1. Welche Kopplungen seht ihr in der Skizze? Benennt für jede die Art: Code, Daten, Zeit, Deployment
 2. Welche davon ist gewollt, welche würde euch beim Wachsen des Systems stören?
 
-Ergebnis: eine Kopplung, die ihr auflösen würdet, mit Begründung
+**Ziel**: eine Kopplung finden, die ihr auflösen würdet, mit Begründung
 
 <!-- Erwartung: API-DB zeitlich und über Daten gekoppelt (gewollt, Transaktion); API-Mail über Outbox zeitlich entkoppelt (gewollt);
 API-Cache zeitlich gekoppelt, aber degradierbar; alles ein Deployment. Stoeren wuerde beim Wachsen: alles in einem Prozess, ein Release. -->
 
 ## Bewertungsmaßstab
 
-Die Qualitätsattribute aus Vorlesung 3, heute als Maßstab für Stile
+Wieder die Qualitätsattribute aus Vorlesung 3...
+
+zum Beispiel:
 
 - Skalierbarkeit und Elastizität, Fehlertoleranz
 - Deployability: Wie schnell und wie risikoarm kommt eine Änderung in Produktion?
@@ -173,10 +140,13 @@ Die Qualitätsattribute aus Vorlesung 3, heute als Maßstab für Stile
 ## Der Monolith
 
 - Eine deploybare Einheit: ein Prozess, ein Build, ein Release
-- Meist eine Datenbank; Aufrufe sind Methodenaufrufe: schnell, transaktional, einfach zu debuggen
-- Die meisten Systeme, in die ihr einsteigt, sind Monolithen, und das ist oft richtig so
-- Monolith ist ein Deployment-Begriff, kein Urteil über die innere Struktur
-- Innere Struktur: Schichten, fachliche Module oder (Vorsicht) keine
+  - Monolith ist ein Deployment-Begriff, kein Urteil über die innere Struktur
+- Meist eine Datenbank
+- Aufrufe sind Methodenaufrufe: schnell, transaktional, einfach zu debuggen
+
+- **Innere Struktur**: Schichten, fachliche Module oder keine Struktur
+
+\rightarrow{} Die meisten Systeme, in die ihr einsteigt, sind Monolithen, und das ist oft richtig so
 
 ## Schichtenarchitektur (Layered)
 
@@ -200,33 +170,35 @@ end note
 
 ## Schichten: Spielregeln
 
-- Geschlossene Schichten: Jede Anfrage durchläuft alle Schichten; offene Schichten dürfen übersprungen werden
-- Schicht ist nicht Tier: Schichten sind logisch (Code), Tiers physisch (Deployment); drei Schichten passen auf einen Server
-- Fachlogik gehört in die Business-Schicht, nicht in den Controller und nicht ins SQL
-- Sinkhole-Antipattern: Schichten reichen nur durch, ohne etwas zu tun; wenn das die Regel ist, sind es zu viele Schichten
+- **Geschlossene Schichten** (Standard): Jede Anfrage durchläuft alle Schichten
+- **Offene Schichten** dürfen übersprungen werden
+- Schicht ≠ Tier: Schichten sind logisch (Code), Tiers physisch (Deployment) \rightarrow{} drei Schichten passen auf einen Server
+- Sinkhole-Antipattern vermeiden: Schichten reichen nur durch, ohne etwas zu tun; wenn das die Regel ist, sind es zu viele Schichten
 
 ## Schichten: Stärken und Schwächen
 
-- **Stärken:** einfach zu verstehen, schnell gestartet, jedes Framework unterstützt es
-  - Gut für kleine Teams, erste Versionen und Domänen, die noch nicht verstanden sind
+**Stärken:** einfach zu verstehen, schnell gestartet, jedes Framework unterstützt es
+\rightarrow{} Gut für kleine Teams, erste Versionen und Domänen, die noch nicht verstanden sind
 
-- **Schwächen:** technisch partitioniert: Ein Feature berührt alle Schichten
-  - Teams nach Schichten (Frontend, Backend, Datenbank) müssen jede Änderung koordinieren
-  - Skalierung und Deployment nur als Ganzes
-  - Mit der Zeit wachsen Querverbindungen, aus Schichten wird ein Big Ball of Mud
+**Schwächen:** technisch partitioniert: Ein Feature berührt alle Schichten
+
+- Teams nach Schichten (Frontend, Backend, Datenbank) müssen jede Änderung koordinieren
+- Skalierung und Deployment nur als Ganzes
+- Mit der Zeit wachsen Querverbindungen, aus Schichten wird ein Big Ball of Mud
 
 ## Big Ball of Mud
 
 Kein erkennbarer Stil: Jeder Teil kennt jeden, Daten werden überall geändert
 
 - Entsteht nicht durch Absicht, sondern durch tausend kleine Abkürzungen unter Zeitdruck
-- Symptome: Angst vor Änderungen, lange Testzyklen, "das weiß nur noch Kollegin X"
-- Das Problem ist nicht der Monolith, sondern das Fehlen durchgesetzter Grenzen
-- Gilt auch für KI-generierten Code: Ohne Regeln nimmt das Werkzeug jede Abkürzung, die der Code erlaubt
+- Das Problem sind das Fehlen durchgesetzter Grenzen
+
+> Gilt auch für KI-generierten Code: Ohne Regeln nimmt das Werkzeug jede Abkürzung, die der Code erlaubt
 
 ## Modular Monolith (Modulith)
 
-- Fachliche Module mit klaren öffentlichen Schnittstellen, ein Deployment
+Fachliche Module mit klaren öffentlichen Schnittstellen, ein Deployment
+
 - Jedes Modul hat eine kleine öffentliche API, der Rest ist privat
 - Eine Datenbank, aber ein Schema je Modul; Zugriff nur über das besitzende Modul
 - Module reden über Schnittstellen oder In-Process-Events, nicht über Datenbank-Joins
@@ -235,10 +207,10 @@ Kein erkennbarer Stil: Jeder Teil kennt jeden, Daten werden überall geändert
 
 Grenzen, die nur in der Doku stehen, erodieren beim ersten Zeitdruck
 
-- Compiler und Build: getrennte Packages oder Projekte, Sichtbarkeiten (`internal`, package-private)
-- Architekturtests: ArchUnit prüft "Anmeldung greift nicht auf Benachrichtigung.intern zu" im CI
-- Reviews: "Warum braucht dieses Modul jenes?"
-- Nutzen: Grenzen, die später Service-Grenzen werden können, ohne heute den Preis des Netzwerks zu zahlen
+- **Compiler und Build**: getrennte Packages oder Projekte, Sichtbarkeiten (`internal`, package-private)
+- **Architekturtests**: ArchUnit prüft "Anmeldung greift nicht auf Benachrichtigung.intern zu" im CI
+- **Reviews**: "Warum braucht dieses Modul jenes?"
+- **Nutzen**: Grenzen, die später Service-Grenzen werden können, ohne heute den Preis des Netzwerks zu zahlen
 
 ## Das Anmeldesystem als Modulith
 
@@ -294,61 +266,26 @@ H --> M : Port "Benachrichtigen"
 @enduml
 ```
 
-- Fachlichkeit innen, Technik außen \rightarrow{} testbar ohne Infrastruktur, Technik austauschbar
-- Einordnung: Struktur innerhalb eines Moduls oder Services, kein Stil des Gesamtsystems (ebenso Clean und Onion Architecture)
-
-## Den Monolithen skalieren
-
-```{.plantuml height=62%}
-@startuml
-left to right direction
-skinparam defaultFontSize 15
-skinparam ranksep 25
-skinparam nodesep 10
-actor Nutzer as U
-[Load Balancer] as LB
-rectangle "Anmeldesystem, zustandslos" {
-  [Instanz 1] as I1
-  [Instanz 2] as I2
-  [Instanz n] as I3
-}
-[Worker\n(gleicher Code)] as W
-queue "Queue" as Q
-database "Primary" as DB
-database "Read Replica" as RR
-database "Cache" as C
-U --> LB
-LB --> I1
-LB --> I2
-LB --> I3
-I1 --> C
-I1 --> DB : schreiben
-I1 --> RR : lesen
-I1 --> Q : langsame Arbeit
-Q --> W
-DB --> RR : Replikation
-@enduml
-```
+Fachlichkeit innen, Technik außen \rightarrow{} testbar ohne Infrastruktur, Technik austauschbar
 
 ## Grenzen des Monolithen
 
-- **Deployment:** Jedes Release enthält alles; ein Fehler in der Statistik blockiert das Anmelde-Feature
+- **Deployment:** Jedes Release enthält alles \rightarrow{} ein Fehler in der Statistik blockiert das Anmelde-Feature
 - **Teams:** Ab etwa drei bis vier Teams auf einem Code-Stand steigt der Koordinationsaufwand: Merge, Release, Testlauf
 - **Last:** Alle Teile skalieren gemeinsam, auch wenn nur die Anmeldung Last hat
 - **Technologie:** eine Sprache, eine Laufzeit, ein Upgrade-Zyklus
 - **Fehlerisolation:** Ein Speicherleck legt alles lahm
 
-\rightarrow{} Keiner dieser Punkte ist bei vier Entwicklern und überschaubarer Codebase ein Problem
-
 # Verteilte Stile
 
 ## Verteilen heißt: ein Netzwerk dazwischen
 
-- Aus dem Methodenaufruf wird ein Netzwerkaufruf \rightarrow{} langsamer, kann fehlschlagen, kann doppelt ankommen
-- Aus einer Transaktion werden mehrere: Konsistenz wird zur Entwurfsfrage
-- Fowler: "First Law of Distributed Object Design: Don't distribute your objects"
+> First Law of Distributed Object Design: Don't distribute your objects (Fowler)
 
-\rightarrow{} grobe Schnittstellen, wenige Aufrufe, Verteilung nur mit Grund
+- Aus dem Methodenaufruf wird ein Netzwerkaufruf \rightarrow{} langsamer, kann fehlschlagen, kann doppelt ankommen
+- Aus einer Transaktion werden mehrere \rightarrow{} Konsistenz wird zur Entwurfsfrage
+
+\rightarrow{} Verteilung nur mit Grund
 
 ## Service-basierte Architektur
 
@@ -374,7 +311,7 @@ R --> DB
 @enduml
 ```
 
-- Wenige, grobe fachliche Services (typisch 4 bis 12), getrennt deploybar, meist mit gemeinsamer Datenbank
+- Wenige, grobe fachliche Services, getrennt deploybar, meist mit gemeinsamer Datenbank
 - Der pragmatische Mittelweg zwischen Modulith und Microservices
 
 ## Service-basiert: Stärken und Schwächen
@@ -418,7 +355,10 @@ Q ..> SC
 @enduml
 ```
 
-- Viele kleine Services, jeder mit eigenen Daten, unabhängig deploybar, meist ein Team je Service
+- Viele kleine Services
+- jeder mit eigenen Daten,
+- unabhängig deploybar,
+- meist ein Team je Service
 
 ## Microservices: Prinzipien
 
@@ -427,23 +367,24 @@ Q ..> SC
 - **Unabhängig** deployen und skalieren; Technologie je Service frei (in der Praxis: wenige erlaubte Stacks)
 - **Ein Team** besitzt einen Service, Entwicklung und Betrieb: "you build it, you run it"
 
-Microservices müssen nicht klein sein
-\rightarrow{} Größe ist nicht das Kriterium, Unabhängigkeit ist es; der Begriff "micro" ist historisch
+> Microservices müssen nicht klein sein, sondern unabhängig (der Begriff "micro" ist historisch)
 
 ## Microservices: Kommunikation
 
-- **Synchron**: REST oder gRPC; einfach, aber zeitliche Kopplung und Aufrufketten
-- **Asynchron**: Nachrichten und Ereignisse über einen Broker; entkoppelt, aber Eventual Consistency
-- Außen: API Gateway bündelt Auth, Limits, Routing
+**Synchron**: REST oder gRPC; einfach, aber zeitliche Kopplung und Aufrufketten
+\rightarrow{} synchron für Fragen ("Wie viele Plätze?")
 
-Faustregel: synchron für Fragen ("Wie viele Plätze?"), asynchron für Tatsachen ("Anmeldung bestätigt")
+**Asynchron**: Nachrichten und Ereignisse über einen Broker; entkoppelt, aber Eventual Consistency
+\rightarrow{} asynchron für Tatsachen ("Anmeldung bestätigt")
+
+> Ist nach Außen ein System, z. B. durch API Gateway
 
 ## Microservices: Daten
 
 - **Keine gemeinsame Datenbank**: API-Aufrufe oder lokale Kopien
-- **Transaktionen** über Services: kein 2PC, sondern Saga: Folge lokaler Transaktionen mit Kompensation
-- **Datenduplikation** ist der bewusste Preis: Der Anmeldedienst speichert Kurs-ID und Kursname, nicht den ganzen Kurs
-- **Eventual Consistency**: Daten sind kurz inkonsistent; das muss der Fachbereich akzeptieren und die UI zeigen
+- **Transaktionen** über Services: kein 2PC, sondern Saga (Transaktionssicherheit durch Kompensation)
+- **Datenduplikation** Der Anmeldedienst speichert Kurs-ID und Kursname, nicht den ganzen Kurs
+- **Eventual Consistency**: Daten sind (kurz) inkonsistent
 
 ## Saga (Entwurfsmuster): Orchestrierung vs. Choreografie
 
@@ -483,11 +424,12 @@ rectangle "Orchestrierung" {
 
 ## Microservices: der Preis
 
-- Verteilte Komplexität: Netzwerk, Teilausfälle, Debugging über Service-Grenzen, Versionierung von Schnittstellen
-- Betrieb: Pipeline, Monitoring, Secrets, Security je Service; ohne Plattform-Team nicht tragbar
-- Organisation: braucht Teams, die Services besitzen; ein Team von fünf mit zwölf Services besitzt nichts davon
-- Verteilter Monolith: viele Services, die nur gemeinsam deploybar sind: alle Nachteile, kein Vorteil
-- Wann nicht: kleines Team, unklare Domäne, Start eines Produkts, keine Betriebserfahrung
+- **Verteilte Komplexität**: Netzwerk, Teilausfälle, Debugging über Service-Grenzen, Versionierung von Schnittstellen
+- **Betrieb**: Pipeline, Monitoring, Secrets, Security je Service
+- **Organisation**: braucht Teams, die Services besitzen
+- Risiko eines **Verteilten Monoliths**: viele Services, die nur gemeinsam deploybar sind: alle Nachteile, kein Vorteil
+
+> Wann nicht: kleines Team, unklare Domäne, Start eines Produkts, keine Betriebserfahrung
 
 ## Das Anmeldesystem als Microservices
 
@@ -523,14 +465,13 @@ N --> M
 
 ## Was wurde schwerer?
 
-- Kurs und Plätze liegen in zwei Services: Was passiert, wenn der Kurs gelöscht wird, während Anmeldungen laufen?
+- Was passiert, wenn der Kurs gelöscht wird, während Anmeldungen laufen? (Kurs und Plätze liegen in zwei Services)
 - Vier Deployments, drei Datenbanken, ein Gateway, ein Broker
-- Am Stichtag: Aufrufkette Gateway \rightarrow{} Anmeldung \rightarrow{} Kurs; jeder Hop kostet Latenz und kann ausfallen
+- Aufrufkette: Gateway \rightarrow{} Anmeldung \rightarrow{} Kurs (jeder Hop kostet Latenz und kann ausfallen)
 
-- Richtig gemacht: Die Platzvergabe bleibt in einem Service mit einer Transaktion, der Überbuchungsschutz braucht keine Saga
-- Gewonnen: unabhängige Releases und Skalierung; nötig erst, wenn Teams oder Last das verlangen
+- Gewonnen: unabhängige Releases und Skalierung; **nötig erst, wenn Teams oder Last das verlangen**
 
-\rightarrow{} Prüfsatz: "Wir brauchen unabhängiges Deployment von X, weil ..." Wer ihn nicht vervollständigen kann, braucht keine Microservices
+\rightarrow{} Prüfsatz: "Wir brauchen unabhängiges Deployment von X, weil ..."
 
 ## Pipes and Filters
 
@@ -551,9 +492,10 @@ O --> I : Text
 @enduml
 ```
 
-- Daten fließen durch eine Kette unabhängiger Schritte; jeder Filter kennt nur seine Ein- und Ausgabe
-- Stärken: Schritte austauschen, umordnen, parallel ausführen
-- Schwächen: Zustand und Fehlerbehandlung über Schritte hinweg
+Daten fließen durch eine Kette **unabhängiger** Schritte; jeder Filter kennt nur seine Ein- und Ausgabe
+
+- **Stärken**: Schritte austauschen, umordnen, parallel ausführen
+- **Schwächen**: Zustand und Fehlerbehandlung über Schritte hinweg
 - Heute meist als Teil einer Datenpipeline oder eines Event-Driven-Systems
 
 ## Event-Driven Architecture (EDA)
@@ -579,54 +521,19 @@ end note
 @enduml
 ```
 
-- Ereignisse statt Aufrufe: "Anmeldung bestätigt" statt "schick eine Mail"
-- Neue Funktion heißt neuer Konsument, ohne den Produzenten anzufassen
+Ereignisse statt Aufrufe: "Anmeldung bestätigt" statt "schick eine Mail"
+
+\rightarrow{} Neue Funktion heißt neuer Konsument, ohne den Produzenten anzufassen
 
 ## EDA: Events, Commands, Queues, Topics
 
-- **Event:** Es ist etwas passiert; Vergangenheitsform, viele Empfänger, keine Antwort erwartet
-- **Command:** Tu etwas; ein Empfänger, kann abgelehnt werden
-- **Queue:** eine Nachricht, ein Konsument, Arbeit verteilen
-- **Topic oder Log:** eine Nachricht, alle Abonnenten; Log zusätzlich mit Historie und Replay
+**Event:** Es ist etwas passiert; Vergangenheitsform, viele Empfänger, keine Antwort erwartet
 
-## Topologien: Broker vs. Mediator
+**Command:** Tu etwas; ein Empfänger, kann abgelehnt werden
 
-```{.plantuml height=72%}
-@startuml
-left to right direction
-skinparam defaultFontSize 15
-skinparam ranksep 25
-skinparam nodesep 8
-rectangle "Mediator-Topologie (Orchestrierung)" {
-  [Anmeldung ] as A2
-  [Mediator\nAblauf "Anmeldung verarbeiten"] as Me
-  [Warteliste ] as W2
-  [Mail ] as M2
-  [Statistik ] as S2
-  A2 --> Me : AnmeldungBestätigt
-  Me --> W2 : 1.
-  Me --> M2 : 2.
-  Me --> S2 : 3.
-}
-rectangle "Broker-Topologie (Choreografie)" {
-  [Anmeldung] as A1
-  queue "Topic 1" as Q1
-  [Warteliste] as W1
-  queue "Topic 2" as Q2
-  [Mail] as M1
-  [Statistik] as S1
-  A1 --> Q1 : AnmeldungBestätigt
-  Q1 --> M1
-  Q1 --> W1
-  W1 --> Q2 : Nachgerückt
-  Q2 --> M1
-  Q2 --> S1
-}
-@enduml
-```
+**Queue:** eine Nachricht, ein Konsument, Arbeit verteilen
 
-- Broker: maximal entkoppelt, Gesamtablauf nirgends sichtbar
-- Mediator: Ablauf und Fehlerbehandlung an einer Stelle, dafür ein Koppelpunkt
+**Topic oder Log:** eine Nachricht, alle Abonnenten; Log zusätzlich mit Historie und Replay
 
 ## EDA: Stärken und Schwächen
 
@@ -637,9 +544,9 @@ rectangle "Broker-Topologie (Choreografie)" {
 
 **Schwächen:**
 
-- Der Gesamtablauf steht in keinem Code: "Wer reagiert eigentlich auf dieses Event?"
+- Der Gesamtablauf steht nicht sequentiell keinem Code
 - Reihenfolge, Duplikate, verlorene Events, Weiterentwicklung der Event-Formate
-- Debugging: "Was ist mit Anmeldung 4711 passiert?"
+- Debugging
 
 ## Das Anmeldesystem event-driven
 
@@ -670,7 +577,7 @@ T ..> E : neu, Kern unverändert
 @enduml
 ```
 
-- Die Platzvergabe bleibt eine Frage mit sofortiger Antwort; alles danach ist Reaktion auf eine Tatsache
+Die Platzvergabe bleibt eine Frage mit sofortiger Antwort; alles danach ist Reaktion auf eine Tatsache
 
 ## Serverless und Functions as a Service
 
@@ -703,11 +610,10 @@ F3 --> M
 @enduml
 ```
 
-- Code als Funktionen, der Anbieter betreibt die Laufzeit
-- Skalierung von null bis zur Lastspitze
-- Bezahlung pro Aufruf
-- Typischer Einsatz: Event-Verarbeitung, Glue-Code, sporadische Aufgaben; selten das ganze System
-- Mischung ist üblich: z. B. Kern als Container, Mailversand und Exporte als Funktionen
+Der Cloud-Anbieter betreibt die Laufzeit
+
+- Verantwortung für Skalierung weitergeben, dafür Bezahlung pro Aufruf
+- Mischung ist üblich, selten das ganze System: z. B. für Mailversand und Exporte
 
 # Stile vergleichen und wählen
 
@@ -728,78 +634,33 @@ F3 --> M
 
 ## Erste Woche in einem neuen Projekt: den Stil erkennen
 
-- Wie viele Dinge werden deployt: ein Artefakt oder viele mit eigener Pipeline?
+- Wie viele Dinge werden deployt? ein Artefakt oder viele mit eigener Pipeline?
 - Wie viele Datenbanken, und wer schreibt in welche Tabelle?
-- Wie reden die Teile: Methodenaufruf, HTTP, Nachrichten? Gibt es einen Broker?
+- Wie reden die Teile: Methodenaufruf, HTTP, Nachrichten?
 - Wie sind Packages und Repos geschnitten: Controller/Service/Repository oder Kurse/Anmeldung/Mail?
-- Wer darf was ändern, ohne jemanden zu fragen? Das ist die echte Grenze
-- Deckt sich das mit dem, was das Team über seine Architektur sagt?
 
-## Schneiden: Wo liegen die Grenzen?
+## Wo sollte ein System geschnitten werden?
 
-- **Nach Fachlichkeit**, nicht nach Technik und nicht nach Tabellen
-- **Bounded Context**: Wo wechselt die Bedeutung eines Begriffs? "Kurs" im Katalog (Beschreibung), in der Anmeldung (Plätze), im Prüfungsamt (Note)
-- Was sich gemeinsam ändert, gehört zusammen; was anders skaliert oder anders oft released wird, darf getrennt sein
+**Nach Fachlichkeit Schneiden**, nicht nach Technik!
 
-Ein falscher Schnitt lässt sich im Modulith günstig korrigieren, zwischen Services teuer
+**Bounded Context**: Wo wechselt die Bedeutung eines Begriffs? "Kurs" im Katalog (Beschreibung), in der Anmeldung (Plätze), im Prüfungsamt (Note)
 
-## Migrationspfade
+\rightarrow{} Was sich gemeinsam ändert, gehört zusammen
+\rightarrow{} Was anders skaliert oder anders oft released wird, darf getrennt sein
 
-```{.plantuml height=30%}
-@startuml
-left to right direction
-skinparam defaultFontSize 15
-skinparam nodesep 25
-rectangle "Monolith\n(Schichten)" as A
-rectangle "Modular\nMonolith" as B
-rectangle "Service-\nbasiert" as C
-rectangle "Micro-\nservices" as D
-A --> B : Grenzen im Code
-B --> C : Grenzen im Deployment
-C --> D : Grenzen in den Daten
-@enduml
-```
-
-- Erst Grenzen im Code, dann im Deployment, zuletzt in den Daten (Daten trennen ist der schwierigste Schritt)
-- Kein Big Bang: Das neue System muss neben dem alten laufen können
-
-## Strangler Fig
-
-```{.plantuml height=52%}
-@startuml
-left to right direction
-skinparam defaultFontSize 15
-skinparam ranksep 30
-skinparam nodesep 10
-actor Clients as C
-[Fassade / Proxy\nRouting je Funktion] as F
-rectangle "Altsystem" {
-  [Kurse] as K
-  [Anmeldung] as A
-  [Prüfungen (alt)] as P
-}
-[Prüfungsdienst (neu)] as PN
-database "Prüfungs-DB (neu)" as PD
-C --> F
-F --> K
-F --> A
-F ..> P : vorher
-F --> PN : nachher
-PN --> PD
-@enduml
-```
-
-- Schrittweise ersetzen: Eine Fassade leitet Funktion für Funktion zum neuen System, das alte stirbt langsam ab
-- Jeder Schritt ist rückgängig machbar; die Datenmigration ist der schwierige Teil
+> Ein falscher Schnitt lässt sich im Modulith günstig korrigieren, zwischen Services ist die Korrekturteuer
 
 ## Stil wählen: Kontextfaktoren
+
+Auswahl eines Stils anahnd von
 
 - **Team:** Größe, Anzahl Teams, Betriebserfahrung, Plattform vorhanden?
 - **Domäne:** verstanden oder noch in Bewegung? Sind die Grenzen klar?
 - **Last:** gleichmäßig oder Spitzen, gleich für alle Teile oder sehr unterschiedlich?
 - **Änderungen:** Wie oft, wie unabhängig voneinander, wie risikoreich?
 - **Vorgaben:** Budget, Compliance, Cloud oder Rechenzentrum, Bestandssystem
-- Standardantwort: Modular Monolith; Abweichung mit Begründung, dokumentiert als ADR
+
+> Standardantwort: Modular Monolith; Abweichung mit Begründung, dokumentiert als ADR
 
 ## Aufgabe 2: das Anmeldesystem drei Jahre später
 
@@ -820,13 +681,11 @@ PN --> PD
 - Nutzung von KI erlaubt: Lasst euch Alternativen und Gegenargumente geben, nicht nur einen Vorschlag
 - Danach Besprechung
 
-\rightarrow{} So eine Aufgabe könnte im Anwendungsteil der Klausur sein
-
 ## Aufgabe 2: Besprechung
 
 - Hat jemand den Modulith behalten? Mit welcher Begründung?
-- Welcher Teil wurde zuerst herausgelöst, und warum dieser?
-- Wo bleibt die Platzvergabe, und wo liegt ihre Transaktion?
+- Welcher Teil wurde zuerst herausgelöst, und warum?
+- Wo ist die Platzvergabe, und woher kommt die transaktionssicherheit?
 - Wie kommt das Prüfungsamt an seine Daten: Aufruf, Event, Replikation, eigener Service?
 - Was hat "eigenes Rechenzentrum" geändert: den Stil, das Deployment oder nur die Konfiguration?
 - Was hat die KI vorgeschlagen, und wo habt ihr widersprochen?
@@ -879,23 +738,22 @@ N --> M
 
 ## Aufgabe 2: die Entscheidungen dahinter
 
-- Service-basiert mit drei Einheiten, nicht fünfzehn: Der Modulith bleibt für Kurse, Anmeldung, Warteliste, Bewertungen
-- Platzvergabe bleibt eine Transaktion; Prüfungen als eigener Service mit eigener Datenbank: eigener Stakeholder, Audit, Historie, Release-Takt
+- Service-basiert mit drei Einheiten
+- Der Modulith bleibt für Kurse, Anmeldung, Warteliste, Bewertungen
+- Prüfungen als eigener Service mit eigener Datenbank: eigener Stakeholder, Audit, Historie, Release-Takt
 - Benachrichtigung und Exporte als Event-Konsumenten: entkoppelt, am Stichtag unkritisch
-- Release-Problem zuerst im Modulith lösen: Modulgrenzen prüfen, Testpyramide statt 50 Minuten Volllauf
 - Eigenes Rechenzentrum: Deployment-Frage (Container, dieselben Artefakte), kein neuer Stil
-- Bewusst nicht: ein Service je Modul, Kafka für 60 Anmeldungen pro Sekunde, Serverless für den Kern
 
 # Zusammenfassung
 
 ## Zusammenfassung
 
 - Ein Stil ist die Antwort auf vier Fragen: Schnitt, Deployment, Daten, Kommunikation
-- Stile unterscheiden sich in Kopplung und Preis, nicht in modern oder alt
-- Modular Monolith als Standardstart; Verteilung kostet Netzwerk, Konsistenz und Betrieb und braucht einen Grund
-- Unabhängigkeit kann für Komplexität sorgen, Entkopplung kann für Unübersichtlichkeit sorgen
-- Der Stil folgt Kontext und Organisation; Grenzen gelten nur, wenn sie durchgesetzt werden
-- Erste Aufgabe im neuen Projekt: den Stil erkennen und seine Spielregeln einhalten
+- Stile werden nach Qualitätsattributen bewertet
+- Modular Monolith als Standardstart
+- Nicht notwendige Verteilung kostet mehr als sie bringt
+  - Unabhängigkeit kann für Komplexität sorgen
+  - Entkopplung kann für Unübersichtlichkeit sorgen
 
 ## Nächste Vorlesung
 
