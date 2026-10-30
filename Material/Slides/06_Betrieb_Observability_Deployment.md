@@ -17,12 +17,13 @@ section-titles: true
 
 <!--
 Time plan: 4 VE = 180 min content; 15 min break separately.
-  Einstieg und Rückblick                   15
-  Eine Änderung sicher ausliefern          40
-  Risiko beim Rollout begrenzen            45
+  Einstieg und Rückblick                   10
+  Eine Änderung sicher ausliefern          35
+  Laufzeit und Orchestrierung              30
+  Risiko beim Rollout begrenzen            30
   Auswirkungen sichtbar machen             40
   Incident und Lernschleife                20
-  Transfer: KI im Betrieb                  15
+  Transfer: KI im Betrieb                  10
   Zusammenfassung                           5
   Sum                                     180
   Short tasks and plenum discussions included in the sections above.
@@ -55,6 +56,7 @@ Time plan: 4 VE = 180 min content; 15 min break separately.
 - Nutzerwirkung mit Metriken, Logs und Traces untersuchen
 - Auf einen Incident reagieren und eine Verbesserung ableiten
 - Zwischen Sicherheit, Tempo und Betriebskosten abwägen
+- Laufzeitmodelle, GitOps und DORA-Kennzahlen einordnen
 
 # Eine Änderung sicher ausliefern
 
@@ -71,6 +73,17 @@ Time plan: 4 VE = 180 min content; 15 min break separately.
 - **Continuous Delivery:** geprüfte Version jederzeit auslieferbar halten
 - **Continuous Deployment:** jede erfolgreiche Änderung automatisch produktiv setzen
 - Automatik spart Wartezeit; riskante Freigaben dürfen bewusst manuell bleiben
+
+## Delivery oder Deployment?
+
+```text
+Commit -> CI (Build + Tests) -> auslieferbares Image
+                                 | manuelle Freigabe: Delivery
+                                 ` automatisch live: Deployment
+```
+
+- Cal.diy: Image v2 testen, dann Canary bewusst freigeben
+- Continuous Delivery heißt **nicht**: jeder Commit ist schon live
 
 ## Ein Artefakt, mehrere Umgebungen
 
@@ -107,6 +120,14 @@ S ..> P : Prüfung / Freigabe
 
 **Best Practice:** schnelle Checks zuerst, kritische Nutzerpfade vor dem Rollout.
 
+## DevOps: Praktiken statt Jobtitel
+
+- Kleine Änderungen, häufig integrieren: weniger auf einmal riskieren
+- Reviews und automatisierte Tests vor dem Merge
+- Entwicklung und Betrieb teilen SLO, On-Call und Rückweg
+- Telemetrie und Postmortems fließen in die nächste Änderung
+- Tradeoff: mehr Automatisierung braucht Pflege und klare Ownership
+
 ## Aufgabe: Wo gehört die Prüfung hin? (5 Minuten)
 
 - Alte und neue App greifen gleichzeitig auf Buchungen zu.
@@ -125,12 +146,109 @@ S ..> P : Prüfung / Freigabe
 
 <!-- Dozent: Bei einem späteren Spaltenersatz wären Backfill und Contract nötig. Alte Felder erst entfernen, wenn weder laufende noch als Rückweg vorgesehene Versionen sie lesen oder schreiben. -->
 
+## GitOps: gewünschter Zustand in Git
+
+```text
+CI baut Image -> Git: v2-Digest -> Controller -> Cluster
+                          ^                    |
+                          +---- Abgleich ------+
+```
+
+- Review der Konfiguration; Controller erkennt Abweichungen (Drift)
+- Kein CI-Zugriff auf produktive Cluster nötig; Freigabe vor Git-Änderung
+- Preis: weiterer Controller, Git-Konflikte und verzögerte Synchronisation
+
+<!-- Dozent: GitOps ist eine Variante von CD, keine Pflicht. Beispiel Argo CD; Freigaben und Canary-Gates bleiben nötig. -->
+
 ## Deployment ist nicht Release
 
 - **Deployment:** v2 läuft technisch; **Release:** Notiz ist sichtbar
 - Feature Flag: Notiz zunächst nur für ein internes Team
 - Abschalten geht schnell – bereits geschriebene Daten bleiben
 - Preis: zusätzliche Zustände; Flags mit Besitzer und Löschtermin
+
+# Laufzeit und Orchestrierung
+
+## Welche Laufzeit für Cal.diy?
+
+| Modell | Plus | Minus |
+|:--|:--|:--|
+| Server (Bare Metal) | volle Kontrolle | Hardware selbst betreiben |
+| VM | Isolation, eigener OS-Stack | OS und Updates pflegen |
+| Container | reproduzierbares Image | Host und Orchestrierung nötig |
+| Serverless (FaaS) | Betrieb/Skalierung delegiert | Laufzeit- und Plattformgrenzen |
+
+- Mehr Abstraktion vereinfacht Bereitstellung; weniger Kontrolle über den Unterbau
+- **Nicht linear:** Container auf eigenen Servern geben mehr Kontrolle als auf PaaS
+
+## Serverless: Wer betreibt die Server?
+
+- Server bleiben – der Anbieter verwaltet sie; wir liefern Code und Konfiguration
+- Hier: **Functions as a Service (FaaS)**, ereignisgesteuert und zustandslos
+- Bedarfsgerechte Skalierung und nutzungsabhängige Abrechnung
+- Risiken: Kaltstart, Limits, Parallelität, Anbieterbindung
+- Dauerbetrieb mit gleichmäßiger Last kann anderswo günstiger sein
+
+<!-- Dozent: Serverless umfasst auch Managed Container/Services; die folgenden Grenzen beziehen sich speziell auf FaaS. Kaltstarts und Limits variieren je nach Anbieter und Konfiguration. -->
+
+## Cal.diy: Wo passt eine Function?
+
+- Kalender-Sync nach dem Outbox-Commit: Worker kann Events an FaaS übergeben
+- FaaS-Verarbeitung bleibt idempotent; Wiederholungen und Duplikate erwarten (V4)
+- Buchungs-API braucht niedrige p95-Latenz: Kaltstarts vorher messen
+- Viele parallele Functions können PostgreSQL-Verbindungen erschöpfen
+- Grenze setzen, Pooling prüfen; kein Serverless nur um „modern“ zu sein
+
+## Serverless: Skalierung gegen die Datenbank
+
+- Beispiel: 40 Events/s × 2 s Laufzeit: etwa 80 gleichzeitige Functions
+- Je zwei DB-Verbindungen → bis zu 160; DB-Limit: 100
+- Function-Skalierung drosseln oder Verbindungspool/Queue nutzen
+- Warteschlange wächst dann: Alter der Aufträge beobachten (V4)
+- Tradeoff: Kosten für Leerlauf sparen, aber Sättigung verlagern
+
+<!-- Dozent: Vereinfachte Mittelwerte für stationäre Last, keine Kapazitätsgarantie. Idempotenz und erneute Zustellung auch bei Drosselung beachten. -->
+
+## Warum Container orchestrieren?
+
+- Eine App-Instanz fällt aus: Wer startet sie neu?
+- Lastspitze: Wer verteilt Traffic und startet weitere Instanzen?
+- v1 und v2 gleichzeitig: Wer steuert Update und Rückweg?
+- Orchestrator löst diese Betriebsfragen, nicht die DB-Konsistenz
+
+## Kubernetes: die Bausteine
+
+```plantuml
+@startuml
+left to right direction
+actor Gast
+rectangle "Service\n(stabile Adresse)" as S
+node "Deployment: Buchungs-API" {
+  rectangle "Pod v1" as A
+  rectangle "Pod v2" as B
+}
+database "PostgreSQL\n(extern)" as DB
+Gast --> S
+S --> A
+S --> B
+A --> DB
+B --> DB
+@enduml
+```
+
+- Deployment regelt gewünschte Pod-Anzahl und Rolling Updates
+- Service verteilt Anfragen; Readiness bestimmt, wer Traffic erhält
+
+## Kubernetes: Möglichkeiten und Grenzen
+
+- Deployment: Rollouts und Selbstheilung; HPA: Pods nach Last skalieren
+- Job/CronJob: einmalige oder geplante Aufgaben, z. B. Datenpflege
+- ConfigMaps/Secrets: Konfiguration trennen; Zugriff absichern
+- Namespace/Quota: Teams und Ressourcen begrenzen, keine harte Sicherheitsgrenze
+- Mehr Pods können den DB-Pool überlasten; Datenbank separat betreiben
+- Alternative: Managed Container/PaaS bei weniger Betriebsaufwand
+
+<!-- Dozent: Pod = kleinste geplante Einheit aus einem oder mehreren Containern. Bei K8s-Service allein keine exakten Traffic-Anteile für Canarys garantiert; dafür zusätzliche Routing-Funktion nötig. -->
 
 # Risiko beim Rollout begrenzen
 
@@ -184,15 +302,6 @@ S ..> P : Prüfung / Freigabe
 
 <!-- Bezug Vorlesung 4: Health Checks helfen beim Failover; das Buchungs-SLI misst Nutzerwirkung. -->
 
-## Orchestrierung und Kosten: nur so viel wie nötig
-
-- Mehr Instanzen brauchen Platz, Neustart und Traffic-Routing
-- Managed Service oder PaaS: weniger Eigenbetrieb; weniger Kontrolle
-- Kubernetes: flexible Rollouts; zusätzliche Komplexität und Kosten
-- Autoscaling hilft bei Last, **nicht** bei blockierter DB oder Fehlkonfiguration
-
-<!-- Dozent: Datenbankverbindungen wachsen oft mit der Instanzzahl. IaC und GitOps sind nützlich für reproduzierbare Infrastruktur, aber kein notwendiger Einstieg für das Lehrbeispiel. -->
-
 ## Aufgabe: Rollout-Entscheidung (6 Minuten)
 
 - v2 erhält 10 % Traffic; p95 ist doppelt so hoch wie bei v1.
@@ -227,6 +336,38 @@ S ..> P : Prüfung / Freigabe
 | Trace | Wo wartete dieser Request? | nur erfasste Requests |
 
 **Best Practice:** Version und Trace-ID korrelieren; Signale nicht gegeneinander ausspielen.
+
+## OpenTelemetry (OTel): Signale transportieren
+
+- SDK instrumentiert Cal.diy: Spans, Metriken, ggf. Logs
+- Trace-Kontext verbindet API, Outbox und Worker
+- Collector empfängt, filtert und verteilt Telemetrie (OTLP)
+- **OTel ist kein Dashboard und keine Datenbank**: Backend zusätzlich nötig
+- Sampling und Datenschutz vor dem Export festlegen
+
+## Möglicher Betriebsstack für Cal.diy
+
+```text
+Cal.diy --OTel--> Collector -- Metriken --> Prometheus --+
+                         |-- Traces ----> Tempo --------+--> Grafana
+                         `-- Logs ------> Loki ---------+
+```
+
+- Selbst betrieben: flexible Abfragen, aber Storage, Betrieb und Kosten
+- Managed Observability: weniger Betrieb, dafür Preis und Datenabfluss
+- Für die Lehre reicht die Architektur; kein Live-Stack nötig
+
+<!-- Dozent: Prometheus kann Metriken vom Collector abholen; die Skizze abstrahiert die konkrete Export-/Scrape-Konfiguration. Tempo und Loki sind Beispiele, keine Pflicht. -->
+
+## PostHog: Nutzerperspektive als SaaS
+
+- Produkt-Events: Wo bricht der Buchungsfluss ab?
+- Session Replay + Error Tracking: Was sah der Gast beim Fehler?
+- OTLP-Logs sind möglich; sensible Felder vorher minimieren
+- Nicht mit vollständigem Infrastruktur-Monitoring gleichsetzen
+- Ergänzung zu OTel/Grafana-Stack, kein Ersatz für DB-Pool-Metriken
+
+<!-- Dozent: SaaS spart Betrieb, erzeugt laufende Kosten und Datenschutzfragen; bei Replays Einwilligung/Maskierung und Mandantengrenzen prüfen. PostHog-Funktionen und Preise können sich ändern. -->
 
 ## Metriken: Nutzerwirkung zuerst
 
@@ -340,6 +481,22 @@ Erkennen → Koordinieren → Eingrenzen → Wiederherstellen → Lernen
 - On-Call braucht klare Alerts, Zugriff und getestete Runbooks
 - Mehr Automatisierung spart Arbeit – falsch konfigurierte Gates blockieren Releases
 
+## DORA: Wie gut liefern wir Änderungen aus?
+
+- **Change Lead Time:** Commit bis produktiv; lange Wartezeit finden
+- **Deployment Frequency:** wie oft geht eine Version produktiv?
+- **Failed Deployment Recovery Time:** wie schnell nach einem fehlgeschlagenen Deployment wiederhergestellt?
+- Cal.diy: Warten v2-Änderungen auf Freigabe oder auf Tests?
+
+## DORA: Tempo ohne Stabilität ist kein Erfolg
+
+- **Change Fail Rate:** Anteil Deployments mit nötigem Soforteingriff
+- **Deployment Rework Rate:** Anteil ungeplanter Folge-Deployments nach Incident
+- Beispiel: 20 Deployments, 2 Soforteingriffe → 10 % Change Fail Rate
+- Alle fünf gemeinsam pro Dienst über Zeit betrachten – kein Personen-Ranking
+
+<!-- Dozent: DORA 2026 zählt fünf Kennzahlen; Failed Deployment Recovery Time ist nicht die MTTR aller Incidents aus V4. Postmortem- und CI-Daten können helfen, die Ursachen hinter den Zahlen zu verstehen. -->
+
 # Transfer: KI im Betrieb
 
 ## Optionale KI-Beschreibung: anderer Erfolgsbegriff
@@ -370,7 +527,8 @@ Erkennen → Koordinieren → Eingrenzen → Wiederherstellen → Lernen
 
 - Getestetes Artefakt, kompatible Daten, kleiner Auswirkungsbereich
 - Erst Nutzerwirkung messen, dann mit Logs und Traces erklären
-- Jede Maßnahme hat Kosten; die beste Wahl hängt vom Risiko ab
+- Abstraktion spart Eigenbetrieb, ersetzt weder SLO noch Datenregeln
+- Tradeoff: Tempo, Kontrolle, Kosten und Zuverlässigkeit
 
 ## Nächste Vorlesung
 
@@ -385,3 +543,8 @@ Erkennen → Koordinieren → Eingrenzen → Wiederherstellen → Lernen
 - Google: [SRE Workbook](https://sre.google/workbook/table-of-contents/) – SLOs und Alerting
 - Humble, Farley: _Continuous Delivery_ – Deployment Pipeline und Datenmigrationen
 - Majors et al.: _Observability Engineering_ – Logs, Metriken und Traces
+- [OpenTelemetry](https://opentelemetry.io/docs/what-is-opentelemetry/) – Instrumentierung und Collector
+- [PostHog Docs](https://posthog.com/docs/product-analytics) – Analytics, Replay, Error Tracking; [OTLP-Logs](https://posthog.com/docs/logs)
+- [DORA Metrics](https://dora.dev/guides/dora-metrics/) – fünf Lieferkennzahlen
+- [Kubernetes Docs](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) und [Argo CD](https://argo-cd.readthedocs.io/en/stable/user-guide/ci_automation/) – Orchestrierung und GitOps
+- [AWS Lambda Docs](https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtime-environment.html) – Kaltstarts und Ausführungsumgebung als FaaS-Beispiel
