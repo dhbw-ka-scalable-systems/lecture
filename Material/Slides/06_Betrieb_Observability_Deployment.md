@@ -19,8 +19,8 @@ section-titles: true
 Time plan: 4 VE = 180 min content; 15 min break separately.
   Einstieg und Rückblick                   15
   Eine Änderung sicher ausliefern          40
-  Risiko beim Rollout begrenzen            40
-  Auswirkungen sichtbar machen             45
+  Risiko beim Rollout begrenzen            45
+  Auswirkungen sichtbar machen             40
   Incident und Lernschleife                20
   Transfer: KI im Betrieb                  15
   Zusammenfassung                           5
@@ -84,8 +84,9 @@ rectangle "Staging" as S
 rectangle "Produktion" as P
 C --> T
 T --> I
-I --> S
-S --> P : dasselbe Image
+I --> S : deployen
+I --> P : dasselbe Image deployen
+S ..> P : Prüfung / Freigabe
 @enduml
 ```
 
@@ -119,10 +120,10 @@ S --> P : dasselbe Image
 
 - `internal_note` zunächst **nullable** ergänzen: alte App bleibt lauffähig
 - v2 deployen; Notiz nur für berechtigte Nutzer freigeben
-- Große Datenbestände in kleinen Schritten nachziehen, Sperren beobachten
-- Altes Schema erst entfernen, wenn keine alte Version mehr schreibt
+- Für die optionale Notiz: kein Backfill und kein Entfernen alter Felder nötig
+- Code-Rollback auf v1 bleibt möglich; die neue Spalte bleibt bestehen
 
-<!-- Dozent: Expand → Umstellen → Contract. Code-Rollback dreht eine bereits geschriebene Datenänderung nicht zurück; Kompatibilität muss in beide Richtungen geplant werden. -->
+<!-- Dozent: Bei einem späteren Spaltenersatz wären Backfill und Contract nötig. Alte Felder erst entfernen, wenn weder laufende noch als Rückweg vorgesehene Versionen sie lesen oder schreiben. -->
 
 ## Deployment ist nicht Release
 
@@ -154,17 +155,25 @@ S --> P : dasselbe Image
 ## Canary: erst messen, dann erweitern
 
 ```text
-v1  90 % ---------- 50 % ----- 0 %
-v2  10 % -- prüfen - 50 % ----- 100 %
-             |
-       Stopp bei Schaden
+10 % v2 -> messen -> Go/Stop -> 50 % -> erneut prüfen -> 100 %
+                         |
+                      Stop: zurück zu v1
 ```
 
-- Pro Version: Buchungs-SLI, p95-Latenz, DB-Fehler und Pool-Wartezeit
-- Vergleich braucht ausreichend Traffic und ein definiertes Zeitfenster
+- Wenige Nutzer zuerst: kleiner Auswirkungsbereich, aber wenig Messdaten
+- v1 und v2 getrennt und bei vergleichbarem Traffic beobachten
 - Nicht „grün“, nur weil die Gesamtfehlerquote stabil bleibt
 
-<!-- Dozent: Kleine Canarys können seltene Fehler übersehen; bei wenig Traffic länger beobachten oder konservativ ausrollen. Vergleich nur bei vergleichbaren Nutzern und Anfragen. -->
+<!-- Dozent: Kleine Canarys übersehen seltene Fehler. Bei wenig Traffic länger beobachten; v2 kann einen anderen Nutzermix erhalten als v1. -->
+
+## Go/Stop-Gate für Cal.diy
+
+- **Vorab:** 15 Minuten und mindestens 200 Buchungsabsichten je Version
+- **Stop:** p95 von v2 > 1,5 × v1 oder Pool-Wartezeit p95 > 200 ms
+- **Go:** Grenzen eingehalten, Buchungs-SLI stabil; sonst pausieren
+- **Verantwortung:** Release-Team entscheidet; bei zu wenig Traffic weiter warten
+
+<!-- Dozent: Beispielwerte, keine universellen Grenzwerte. Buchungs-SLI und DB-Fehler je Version prüfen; wenige hundert Ereignisse beweisen kein 99,9-%-SLO. Die eindeutige Buchungsabsicht aus V4 zählt nur einmal, auch bei technischen Retries. Bei akutem Buchungsausfall unabhängig vom Messfenster stoppen. -->
 
 ## Health Checks sind nicht das SLO
 
@@ -260,15 +269,14 @@ level=warn event=booking.slow version=v2 trace_id=abc123 db_wait_ms=870
 POST /bookings                 1.400 ms
 |-- authorize                    12 ms
 |-- wait for DB connection      870 ms
-|-- PostgreSQL transaction      110 ms
-`-- enqueue calendar sync        18 ms
+`-- DB: Buchung + Outbox         110 ms
 ```
 
 - Span = ein Schritt; Trace = verbundene Schritte eines Requests
 - Verdacht: Pool-Sättigung, nicht langsame Kalender-API
 - Trace-Sampling spart Kosten; seltene Fehler dürfen nicht unsichtbar werden
 
-<!-- Dozent: Restzeit umfasst u. a. Netzwerk und Anwendungscode; die Spans addieren sich hier nicht zwingend zur Gesamtdauer. Hypothese mit Pool-Metriken prüfen, nicht aus einem Trace allein verallgemeinern. -->
+<!-- Dozent: Die übrigen 408 ms sind hier nicht aufgeschlüsselt (z. B. Netzwerk und Anwendungscode); sichtbare Spans decken nicht zwangsläufig den ganzen Request ab. Die Outbox wird in derselben DB-Transaktion wie die Buchung gespeichert (V4), der Worker synchronisiert später. Hypothese mit Pool-Metriken prüfen, nicht aus einem Trace allein verallgemeinern. -->
 
 ## Vom SLI zum handlungsfähigen Alert
 
