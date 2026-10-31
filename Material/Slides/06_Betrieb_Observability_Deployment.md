@@ -18,8 +18,8 @@ section-titles: true
 <!--
 Time plan: 4 VE = 180 min content; 15 min break separately.
   Einstieg und Rückblick                   10
-  Eine Änderung sicher ausliefern          35
-  Laufzeit und Orchestrierung              30
+  Eine Änderung sicher ausliefern          30
+  Laufzeit und Orchestrierung              35
   Risiko beim Rollout begrenzen            30
   Auswirkungen sichtbar machen             40
   Incident und Lernschleife                20
@@ -209,6 +209,37 @@ CI baut Image -> Git: v2-Digest -> Controller -> Cluster
 
 <!-- Dozent: Vereinfachte Mittelwerte für stationäre Last, keine Kapazitätsgarantie. Idempotenz und erneute Zustellung auch bei Drosselung beachten. -->
 
+## Cal.diy: Wenn Functions schneller skalieren als die Datenbank
+
+![](media/06_serverless_db_limit.pdf){height=82%}
+
+## Wann lohnt sich FaaS?
+
+| Lastprofil | Tendenz | Grund |
+|:--|:--|:--|
+| Seltene Kalender-Events | FaaS | keine dauerhaft laufende Worker-Instanz |
+| Kurze, starke Spitzen | FaaS prüfen | skaliert schnell; Limits und DB schützen |
+| Dauerhaft hohe Last | Container prüfen | nutzungsabhängige Kosten summieren sich |
+| Strenge API-Latenz | messen | Kaltstart kann p95 verschlechtern |
+
+## Die Rechnung endet nicht beim Aufrufpreis
+
+```text
+FaaS: Aufrufe + Laufzeit × Speicher + Netz/Logs + ggf. Warmhaltung
+Container: laufende Kapazität + Netz/Logs + Betriebsaufwand
+```
+
+- Bei Leerlauf spart FaaS oft Kapazitätskosten; bei Dauerlast vergleichen
+- Warmgehaltene Functions senken Kaltstarts, kosten aber auch ohne Aufrufe
+- Kosten **und** p95, DB-Verbindungen, Limits unter realer Last messen
+- Cal.diy: Worker eher geeignet als die synchrone Buchungs-API
+
+<!-- Dozent: Keine universelle Kostenschwelle; Preise und Freikontingente hängen vom Anbieter ab. Die Formeln vereinfachen u. a. Datenbank- und externe Dienste-Kosten. -->
+
+## Serverless: Das Lastprofil entscheidet
+
+![](media/06_serverless_lastprofil.pdf){height=82%}
+
 ## Warum Container orchestrieren?
 
 - Eine App-Instanz fällt aus: Wer startet sie neu?
@@ -250,6 +281,34 @@ B --> DB
 
 <!-- Dozent: Pod = kleinste geplante Einheit aus einem oder mehreren Containern. Bei K8s-Service allein keine exakten Traffic-Anteile für Canarys garantiert; dafür zusätzliche Routing-Funktion nötig. -->
 
+## Kubernetes: gewünschter Zustand und Rolling Update
+
+```text
+Deployment: 4 Pods mit Image v1 -> Image v2 eintragen
+Controller: neuen Pod starten -> Readiness prüfen -> alten entfernen
+```
+
+- `maxSurge: 1`: höchstens ein zusätzlicher Pod beim Update
+- `maxUnavailable: 0`: vier verfügbare Pods erhalten, wenn Kapazität reicht
+- Hängt v2 in Readiness, stoppt der Fortschritt; nicht blind weiterrollen
+- Service verteilt auf bereite Pods – **keine exakte 10-%-Canary-Steuerung**
+
+<!-- Dozent: Für einen gezielten Canary getrennte Deployments plus geeignetes Routing einsetzen. Rollback des Deployments dreht DB-Änderungen nicht zurück. -->
+
+## Kubernetes: Rolling Update im Ablauf
+
+![](media/06_kubernetes_rollout.pdf){height=82%}
+
+## Kubernetes: Skalierung hat eine Grenze
+
+- HPA passt die Pod-Zahl anhand von CPU oder anderen Metriken an
+- Beispiel: 2 → 6 API-Pods mit je 20 DB-Verbindungen = bis zu 120
+- Hat die Datenbank nur 100 Plätze, steigt die Wartezeit trotz mehr Pods
+- `maxReplicas` und Poolgrößen begrenzen; DB-Signale mitbeobachten
+- HPA ersetzt weder Kapazitätsplanung noch Canary-Go/Stop-Gate
+
+<!-- Dozent: Bei CPU-Auslastung als HPA-Metrik passende Resource Requests setzen. Rechnungen sind illustrative Obergrenzen, keine Messdaten. -->
+
 # Risiko beim Rollout begrenzen
 
 ## Problem: v2 ist getestet – aber wie viel Risiko?
@@ -283,6 +342,10 @@ B --> DB
 - Nicht „grün“, nur weil die Gesamtfehlerquote stabil bleibt
 
 <!-- Dozent: Kleine Canarys übersehen seltene Fehler. Bei wenig Traffic länger beobachten; v2 kann einen anderen Nutzermix erhalten als v1. -->
+
+## Canary: Versionen getrennt betrachten
+
+![](media/06_canary_gate.pdf){height=82%}
 
 ## Go/Stop-Gate für Cal.diy
 
@@ -359,6 +422,10 @@ Cal.diy --OTel--> Collector -- Metriken --> Prometheus --+
 
 <!-- Dozent: Prometheus kann Metriken vom Collector abholen; die Skizze abstrahiert die konkrete Export-/Scrape-Konfiguration. Tempo und Loki sind Beispiele, keine Pflicht. -->
 
+## Betriebs- und Nutzerperspektive: zwei Wege
+
+![](media/06_observability_wege.pdf){height=82%}
+
 ## PostHog: Nutzerperspektive als SaaS
 
 - Produkt-Events: Wo bricht der Buchungsfluss ab?
@@ -419,6 +486,10 @@ POST /bookings                 1.400 ms
 
 <!-- Dozent: Die übrigen 408 ms sind hier nicht aufgeschlüsselt (z. B. Netzwerk und Anwendungscode); sichtbare Spans decken nicht zwangsläufig den ganzen Request ab. Die Outbox wird in derselben DB-Transaktion wie die Buchung gespeichert (V4), der Worker synchronisiert später. Hypothese mit Pool-Metriken prüfen, nicht aus einem Trace allein verallgemeinern. -->
 
+## Trace: Die Wartezeit wird sichtbar
+
+![](media/06_trace_waterfall.pdf){height=82%}
+
 ## Vom SLI zum handlungsfähigen Alert
 
 - V4-SLO: 99,9 % gute Buchungsabsichten in 28 Tagen
@@ -467,12 +538,12 @@ Erkennen → Koordinieren → Eingrenzen → Wiederherstellen → Lernen
 
 ## Postmortem: Ursache statt Schuld
 
-- **Befund:** v2 öffnet zu viele Verbindungen; v1 bleibt gesund
+- **Befund:** v2-API öffnet zu viele Verbindungen; v1 bleibt gesund
 - **Bedingung:** Testlast und Pool-Konfiguration bildeten Produktion nicht ab
 - **Maßnahme:** Pool-Limit + Lasttest + Canary-Gate für Pool-Wartezeit
 - **Nachweis:** Rollout erneut mit begrenztem Canary testen
 
-<!-- Fiktiver Befund, keine Aussage über Cal.diy. Bezug Vorlesung 4: blameless, Maßnahme mit Verantwortlichen und Termin festhalten. -->
+<!-- Fiktiver Befund, keine Aussage über Cal.diy. In V4 erschöpft der Kalender-Worker den Pool; hier ist die neue API-Version der Auslöser. Bezug V4: blameless, Maßnahme mit Verantwortlichen und Termin festhalten. -->
 
 ## Wer trägt den Betrieb?
 
@@ -547,4 +618,4 @@ Erkennen → Koordinieren → Eingrenzen → Wiederherstellen → Lernen
 - [PostHog Docs](https://posthog.com/docs/product-analytics) – Analytics, Replay, Error Tracking; [OTLP-Logs](https://posthog.com/docs/logs)
 - [DORA Metrics](https://dora.dev/guides/dora-metrics/) – fünf Lieferkennzahlen
 - [Kubernetes Docs](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) und [Argo CD](https://argo-cd.readthedocs.io/en/stable/user-guide/ci_automation/) – Orchestrierung und GitOps
-- [AWS Lambda Docs](https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtime-environment.html) – Kaltstarts und Ausführungsumgebung als FaaS-Beispiel
+- [AWS Lambda Docs](https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtime-environment.html) und [Pricing](https://aws.amazon.com/lambda/pricing/) – Kaltstarts und Kosten als FaaS-Beispiel

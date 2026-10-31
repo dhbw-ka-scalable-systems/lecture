@@ -1,0 +1,21 @@
+@startuml
+' Schematische Zuordnung; Export-/Scrape-Konfiguration bleibt offen.
+left to right direction
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam defaultFontSize 22
+skinparam shadowing false
+skinparam linetype ortho
+
+rectangle "Cal.diy\nAPI / Worker" as cal #D7E9FA
+rectangle "OTel\nCollector" as collector #D7E9FA
+rectangle "Prometheus: Metriken\nTempo: Traces\nLoki: Logs" as backends #FFFFFF
+rectangle "Grafana\nBetrieb" as grafana #D7E9FA
+rectangle "Frontend\nProdukt-Events" as frontend #FFE2C7
+rectangle "PostHog Cloud\nAnalytics / Replay" as posthog #FFE2C7
+
+cal --> collector
+collector --> backends
+backends --> grafana
+frontend --> posthog
+@enduml

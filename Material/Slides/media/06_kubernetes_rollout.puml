@@ -1,0 +1,35 @@
+@startuml
+scale 1600*900
+left to right direction
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 21
+skinparam ArrowColor #40566B
+skinparam ArrowThickness 3
+skinparam RectangleBorderColor #40566B
+skinparam RectangleRoundCorner 16
+skinparam RectangleFontColor #152C40
+skinparam RectangleFontSize 22
+skinparam TitleFontSize 32
+skinparam LegendFontSize 20
+
+title Rolling Update: ein Pod nach dem anderen
+
+rectangle "1  Soll: Image v1 → v2\n\n4 × v1 bereit\n\n4 Pods" as soll #EAF0F6
+rectangle "2  Neuer Pod startet\n\n4 × v1 bereit\n1 × v2 startet\n5 Pods" as start #EAF0F6
+rectangle "3  Readiness: OK\n\n4 × v1 bereit\n1 × v2 bereit\n5 Pods" as bereit #DDF2E7
+rectangle "4  Traffic auch zu v2\n\nService nutzt\nbereite Pods\n5 Pods" as traffic #DDF2E7
+rectangle "5  Alter Pod entfernt\n\n3 × v1 bereit\n1 × v2 bereit\n4 Pods" as ende #EAF0F6
+
+soll --> start
+start --> bereit
+bereit --> traffic
+traffic --> ende
+
+legend bottom
+  4 gewünschte Replikate  |  maxSurge: 1  |  maxUnavailable: 0
+  Falls v2 nicht bereit wird: v1 bleibt, der Rollout wartet.
+  Service: keine garantierten festen Canary-Traffic-Anteile.
+endlegend
+@enduml
