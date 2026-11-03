@@ -15,19 +15,6 @@ toc: true
 section-titles: true
 ...
 
-<!--
-Time plan: 4 VE = 180 min content; 15 min break separately.
-  Einstieg und Rückblick                   10
-  Eine Änderung sicher ausliefern          30
-  Laufzeit und Orchestrierung              35
-  Risiko beim Rollout begrenzen            30
-  Auswirkungen sichtbar machen             40
-  Incident und Lernschleife                20
-  Transfer: KI im Betrieb                  10
-  Zusammenfassung                           5
-  Sum                                     180
-  Short tasks and plenum discussions included in the sections above.
--->
 
 # Einstieg und Rückblick
 
@@ -38,7 +25,6 @@ Time plan: 4 VE = 180 min content; 15 min break separately.
 - Lokal funktioniert alles – was passiert beim Ausrollen?
 - Weg: **prüfen → ausliefern → beobachten → eingreifen → lernen**
 
-<!-- Dozent: Die Notiz und der folgende Vorfall sind fiktiv; keine Aussage über die reale Cal.diy-Implementierung. -->
 
 ## Was wir schon wissen (Vorlesungen 2 und 4)
 
@@ -47,7 +33,6 @@ Time plan: 4 VE = 180 min content; 15 min break separately.
 - **V4:** SLI = Anteil gültiger Buchungsabsichten mit Bestätigung innerhalb von 2 s.
 - **V4:** SLO = mindestens 99,9 % in rollierenden 28 Tagen.
 
-<!-- Selbststudium: Für SLI und Fehlerbudget die Folien „Unser Buchungs-SLI“ und „Fehlerbudget berechnen“ in Vorlesung 4 wiederholen. -->
 
 ## Lernziele
 
@@ -107,7 +92,6 @@ S ..> P : Prüfung / Freigabe
 - Bei Fehler abbrechen; Version und Testergebnis nachvollziehbar halten
 - Secrets erst zur Laufzeit bereitstellen – nie ins Image
 
-<!-- Dozent: Verbindung zu Vorlesung 2: Der Integrationstest muss die DB-Regel gegen Doppelbuchungen wirklich ausführen. Safety-Scans und Reviews sind weitere Gates, aber kein Ersatz für fachliche Tests. -->
 
 ## Was testet die Pipeline – und was nicht?
 
@@ -120,7 +104,11 @@ S ..> P : Prüfung / Freigabe
 
 **Best Practice:** schnelle Checks zuerst, kritische Nutzerpfade vor dem Rollout.
 
-## DevOps: Praktiken statt Jobtitel
+TODO: Canary Folie einfügen mit Definition + eventuell Bild.
+
+## DevOps
+
+TODO: weiter ausführen, Grundlegende Definition, Vorteile ...
 
 - Kleine Änderungen, häufig integrieren: weniger auf einmal riskieren
 - Reviews und automatisierte Tests vor dem Merge
@@ -128,14 +116,12 @@ S ..> P : Prüfung / Freigabe
 - Telemetrie und Postmortems fließen in die nächste Änderung
 - Tradeoff: mehr Automatisierung braucht Pflege und klare Ownership
 
-## Aufgabe: Wo gehört die Prüfung hin? (5 Minuten)
+## Wo gehört die Prüfung hin?
 
 - Alte und neue App greifen gleichzeitig auf Buchungen zu.
 - Ein doppelter Slot darf niemals bestätigt werden.
 - Eine neue Notiz darf nicht bei fremden Mandanten auftauchen.
-- Zu zweit: Welche Prüfungen vor Produktion? Was erst im Canary sichtbar?
-
-<!-- Dozent: Im Plenum DB-Constraint/Integrationstest, mandantenübergreifenden Zugriffstest und Signal für reale Last sammeln. Tests und Monitoring ergänzen sich. -->
+- Welche Prüfungen vor Produktion? Was erst im Canary sichtbar?
 
 ## Migration: alte und neue Version gleichzeitig
 
@@ -144,7 +130,6 @@ S ..> P : Prüfung / Freigabe
 - Für die optionale Notiz: kein Backfill und kein Entfernen alter Felder nötig
 - Code-Rollback auf v1 bleibt möglich; die neue Spalte bleibt bestehen
 
-<!-- Dozent: Bei einem späteren Spaltenersatz wären Backfill und Contract nötig. Alte Felder erst entfernen, wenn weder laufende noch als Rückweg vorgesehene Versionen sie lesen oder schreiben. -->
 
 ## GitOps: gewünschter Zustand in Git
 
@@ -158,7 +143,7 @@ CI baut Image -> Git: v2-Digest -> Controller -> Cluster
 - Kein CI-Zugriff auf produktive Cluster nötig; Freigabe vor Git-Änderung
 - Preis: weiterer Controller, Git-Konflikte und verzögerte Synchronisation
 
-<!-- Dozent: GitOps ist eine Variante von CD, keine Pflicht. Beispiel Argo CD; Freigaben und Canary-Gates bleiben nötig. -->
+TODO: weiter ausführen. Was bedeutet das in der Praxis? Wie wird das umgesetzt? Vorteile?
 
 ## Deployment ist nicht Release
 
@@ -166,6 +151,8 @@ CI baut Image -> Git: v2-Digest -> Controller -> Cluster
 - Feature Flag: Notiz zunächst nur für ein internes Team
 - Abschalten geht schnell – bereits geschriebene Daten bleiben
 - Preis: zusätzliche Zustände; Flags mit Besitzer und Löschtermin
+
+TODO: Feature flags weiter ausführen.
 
 # Laufzeit und Orchestrierung
 
@@ -189,7 +176,7 @@ CI baut Image -> Git: v2-Digest -> Controller -> Cluster
 - Risiken: Kaltstart, Limits, Parallelität, Anbieterbindung
 - Dauerbetrieb mit gleichmäßiger Last kann anderswo günstiger sein
 
-<!-- Dozent: Serverless umfasst auch Managed Container/Services; die folgenden Grenzen beziehen sich speziell auf FaaS. Kaltstarts und Limits variieren je nach Anbieter und Konfiguration. -->
+TODO: FaaS Runtime erklären, Beispiele und Unterschiede z.B. Cloudflare Worker sehr leichtgewichtig, AWS Lambda mit mehr Limits und Kaltstart. 
 
 ## Cal.diy: Wo passt eine Function?
 
@@ -206,8 +193,6 @@ CI baut Image -> Git: v2-Digest -> Controller -> Cluster
 - Function-Skalierung drosseln oder Verbindungspool/Queue nutzen
 - Warteschlange wächst dann: Alter der Aufträge beobachten (V4)
 - Tradeoff: Kosten für Leerlauf sparen, aber Sättigung verlagern
-
-<!-- Dozent: Vereinfachte Mittelwerte für stationäre Last, keine Kapazitätsgarantie. Idempotenz und erneute Zustellung auch bei Drosselung beachten. -->
 
 ## Cal.diy: Wenn Functions schneller skalieren als die Datenbank
 
@@ -234,11 +219,12 @@ Container: laufende Kapazität + Netz/Logs + Betriebsaufwand
 - Kosten **und** p95, DB-Verbindungen, Limits unter realer Last messen
 - Cal.diy: Worker eher geeignet als die synchrone Buchungs-API
 
-<!-- Dozent: Keine universelle Kostenschwelle; Preise und Freikontingente hängen vom Anbieter ab. Die Formeln vereinfachen u. a. Datenbank- und externe Dienste-Kosten. -->
 
 ## Serverless: Das Lastprofil entscheidet
 
 ![](media/06_serverless_lastprofil.pdf){height=82%}
+
+TODO: noch mehr auf Container eingehen, Unterschiede zu FaaS klarer darstellen
 
 ## Warum Container orchestrieren?
 
@@ -246,6 +232,8 @@ Container: laufende Kapazität + Netz/Logs + Betriebsaufwand
 - Lastspitze: Wer verteilt Traffic und startet weitere Instanzen?
 - v1 und v2 gleichzeitig: Wer steuert Update und Rückweg?
 - Orchestrator löst diese Betriebsfragen, nicht die DB-Konsistenz
+
+TODO: Kubernetes Grundlagen besser darstellen, dann erst Details.
 
 ## Kubernetes: die Bausteine
 
@@ -279,7 +267,6 @@ B --> DB
 - Mehr Pods können den DB-Pool überlasten; Datenbank separat betreiben
 - Alternative: Managed Container/PaaS bei weniger Betriebsaufwand
 
-<!-- Dozent: Pod = kleinste geplante Einheit aus einem oder mehreren Containern. Bei K8s-Service allein keine exakten Traffic-Anteile für Canarys garantiert; dafür zusätzliche Routing-Funktion nötig. -->
 
 ## Kubernetes: gewünschter Zustand und Rolling Update
 
@@ -293,7 +280,7 @@ Controller: neuen Pod starten -> Readiness prüfen -> alten entfernen
 - Hängt v2 in Readiness, stoppt der Fortschritt; nicht blind weiterrollen
 - Service verteilt auf bereite Pods – **keine exakte 10-%-Canary-Steuerung**
 
-<!-- Dozent: Für einen gezielten Canary getrennte Deployments plus geeignetes Routing einsetzen. Rollback des Deployments dreht DB-Änderungen nicht zurück. -->
+TODO: Klarstellen, dass das nicht nur über Kubernetes geht!
 
 ## Kubernetes: Rolling Update im Ablauf
 
@@ -307,8 +294,8 @@ Controller: neuen Pod starten -> Readiness prüfen -> alten entfernen
 - `maxReplicas` und Poolgrößen begrenzen; DB-Signale mitbeobachten
 - HPA ersetzt weder Kapazitätsplanung noch Canary-Go/Stop-Gate
 
-<!-- Dozent: Bei CPU-Auslastung als HPA-Metrik passende Resource Requests setzen. Rechnungen sind illustrative Obergrenzen, keine Messdaten. -->
 
+TODO: den folgenden Abschnitt vermutlich weiter vorschieben, vor technischen Details und Kubernetes. Risiko + Strategien sind allgemeiner.
 # Risiko beim Rollout begrenzen
 
 ## Problem: v2 ist getestet – aber wie viel Risiko?
@@ -341,8 +328,6 @@ Controller: neuen Pod starten -> Readiness prüfen -> alten entfernen
 - v1 und v2 getrennt und bei vergleichbarem Traffic beobachten
 - Nicht „grün“, nur weil die Gesamtfehlerquote stabil bleibt
 
-<!-- Dozent: Kleine Canarys übersehen seltene Fehler. Bei wenig Traffic länger beobachten; v2 kann einen anderen Nutzermix erhalten als v1. -->
-
 ## Canary: Versionen getrennt betrachten
 
 ![](media/06_canary_gate.pdf){height=82%}
@@ -354,7 +339,6 @@ Controller: neuen Pod starten -> Readiness prüfen -> alten entfernen
 - **Go:** Grenzen eingehalten, Buchungs-SLI stabil; sonst pausieren
 - **Verantwortung:** Release-Team entscheidet; bei zu wenig Traffic weiter warten
 
-<!-- Dozent: Beispielwerte, keine universellen Grenzwerte. Buchungs-SLI und DB-Fehler je Version prüfen; wenige hundert Ereignisse beweisen kein 99,9-%-SLO. Die eindeutige Buchungsabsicht aus V4 zählt nur einmal, auch bei technischen Retries. Bei akutem Buchungsausfall unabhängig vom Messfenster stoppen. -->
 
 ## Health Checks sind nicht das SLO
 
@@ -363,16 +347,14 @@ Controller: neuen Pod starten -> Readiness prüfen -> alten entfernen
 - „HTTP 200“ sagt nichts über erfolgreiche Buchungen
 - Falsche Readiness kann alle Instanzen gleichzeitig aus dem Traffic nehmen
 
-<!-- Bezug Vorlesung 4: Health Checks helfen beim Failover; das Buchungs-SLI misst Nutzerwirkung. -->
+TODO: Verweis Failover
 
-## Aufgabe: Rollout-Entscheidung (6 Minuten)
+## Rollout-Entscheidung 
 
 - v2 erhält 10 % Traffic; p95 ist doppelt so hoch wie bei v1.
 - Gesamtfehlerquote bleibt fast unverändert.
 - v2 belegt doppelt so viele DB-Verbindungen.
-- In Dreiergruppen: weiterrollen, pausieren oder zurück? Welche zwei Signale fehlen?
-
-<!-- Dozent: Erwartung: pausieren, nicht auf 50 % gehen; Buchungs-SLI nach Version und DB-Pool-Wartezeit/Queries prüfen. Rollback nur bei kompatiblem Schema und sicherem Rückweg. -->
+- Frage: weiterrollen, pausieren oder zurück? Welche zwei Signale fehlen?
 
 ## Rückweg: Code und Daten sind verschieden
 
@@ -400,6 +382,9 @@ Controller: neuen Pod starten -> Readiness prüfen -> alten entfernen
 
 **Best Practice:** Version und Trace-ID korrelieren; Signale nicht gegeneinander ausspielen.
 
+TODO: Beispiele für Metriken, Logs und Traces zeigen. Bilder aus OTel Doku?
+-> Folien von weiter hinten hierher verschieben
+
 ## OpenTelemetry (OTel): Signale transportieren
 
 - SDK instrumentiert Cal.diy: Spans, Metriken, ggf. Logs
@@ -420,21 +405,11 @@ Cal.diy --OTel--> Collector -- Metriken --> Prometheus --+
 - Managed Observability: weniger Betrieb, dafür Preis und Datenabfluss
 - Für die Lehre reicht die Architektur; kein Live-Stack nötig
 
-<!-- Dozent: Prometheus kann Metriken vom Collector abholen; die Skizze abstrahiert die konkrete Export-/Scrape-Konfiguration. Tempo und Loki sind Beispiele, keine Pflicht. -->
+TODO: Klarstellen, dass der LGTM Stack nur ein Beispiel ist! OTel ist ein Standard
 
 ## Betriebs- und Nutzerperspektive: zwei Wege
 
 ![](media/06_observability_wege.pdf){height=82%}
-
-## PostHog: Nutzerperspektive als SaaS
-
-- Produkt-Events: Wo bricht der Buchungsfluss ab?
-- Session Replay + Error Tracking: Was sah der Gast beim Fehler?
-- OTLP-Logs sind möglich; sensible Felder vorher minimieren
-- Nicht mit vollständigem Infrastruktur-Monitoring gleichsetzen
-- Ergänzung zu OTel/Grafana-Stack, kein Ersatz für DB-Pool-Metriken
-
-<!-- Dozent: SaaS spart Betrieb, erzeugt laufende Kosten und Datenschutzfragen; bei Replays Einwilligung/Maskierung und Mandantengrenzen prüfen. PostHog-Funktionen und Preise können sich ändern. -->
 
 ## Metriken: Nutzerwirkung zuerst
 
@@ -443,7 +418,6 @@ Cal.diy --OTel--> Collector -- Metriken --> Prometheus --+
 - **Duration:** Bestätigungszeit, z. B. p95 statt nur Durchschnitt
 - Ergänzend: Pool-Wartezeit und Alter der Kalender-Outbox
 
-<!-- Dozent: Konflikt um einen wirklich belegten Slot ist nicht pauschal ein Serverfehler. Den SLI-Nenner aus Vorlesung 4 beibehalten; technische Retries nicht doppelt zählen. RED = Rate, Errors, Duration. -->
 
 ## p95 statt nur Durchschnitt
 
@@ -458,6 +432,8 @@ p95:           5,0 s
 - Der Mittelwert versteckt die zehn stark betroffenen Anfragen
 - Perzentile immer mit Zeitraum, Traffic und Version lesen
 
+TODO: p95 einführen wo zuerst verwendet!
+
 ## Logs: Kontext, nicht Datenmüll
 
 ```text
@@ -469,7 +445,6 @@ level=warn event=booking.slow version=v2 trace_id=abc123 db_wait_ms=870
 - Keine Secrets, Kalenderinhalte oder unnötigen Personendaten loggen
 - Mandantenbezug nur soweit nötig und zugriffsgeschützt
 
-<!-- Bezug Vorlesung 2: Audit-Log für sicherheitsrelevante Aktionen ist nicht dasselbe wie Diagnose-Log. Auch Trace-Attribute können personenbezogene Daten preisgeben. -->
 
 ## Trace: Wo geht die Zeit hin?
 
@@ -484,8 +459,6 @@ POST /bookings                 1.400 ms
 - Verdacht: Pool-Sättigung, nicht langsame Kalender-API
 - Trace-Sampling spart Kosten; seltene Fehler dürfen nicht unsichtbar werden
 
-<!-- Dozent: Die übrigen 408 ms sind hier nicht aufgeschlüsselt (z. B. Netzwerk und Anwendungscode); sichtbare Spans decken nicht zwangsläufig den ganzen Request ab. Die Outbox wird in derselben DB-Transaktion wie die Buchung gespeichert (V4), der Worker synchronisiert später. Hypothese mit Pool-Metriken prüfen, nicht aus einem Trace allein verallgemeinern. -->
-
 ## Trace: Die Wartezeit wird sichtbar
 
 ![](media/06_trace_waterfall.pdf){height=82%}
@@ -497,24 +470,14 @@ POST /bookings                 1.400 ms
 - Alert bei schnellem Budgetverbrauch oder akutem Buchungsausfall
 - Ziel: Nutzerwirkung + zuständiges Team + sicherer erster Schritt
 
-<!-- Dozent: Kurze Canary-Gates können zusätzliche, versionsbezogene Grenzwerte nutzen; ein 28-Tage-SLO allein reagiert zu langsam auf ein neues Deployment. Kurzzeitige CPU-Spitzen ohne Nutzerwirkung gehören ins Dashboard, nicht in den Pager. -->
-
 ## Beispiel: Observability-Konzept für Cal.diy
 
 - **Frage:** Buchen Gäste seit v2 seltener erfolgreich?
+  - Welche Signale sind dafür relevant? Welche Daten müssen wir erfassen?
 - **Dashboard:** SLI und p95 nach Version; DB-Pool-Wartezeit
 - **Drill-down:** Trace-ID → langsamer DB-Span → Log zum Pool
 - **Aktion:** Canary pausieren; Pool-Limit und Worker-Verbindungen prüfen
 
-<!-- Dozent: Im Plenum erarbeiten, welches Signal zuerst den Nutzerfehler zeigt und welches die Ursache prüft. Bei Mandantenvergleich auf Datenschutz und geringe Fallzahlen achten. -->
-
-## Aufgabe: Ein guter Alarm? (4 Minuten)
-
-- A: „CPU für 30 Sekunden über 80 %“
-- B: „Buchungs-SLI von v2 fällt; Canary stoppen, Runbook öffnen“
-- Welche Meldung braucht Bereitschaft? Welche Info fehlt noch?
-
-<!-- Dozent: B priorisieren; Schwelle, Beobachtungsdauer, Mindest-Traffic und Zuständigkeit vorab konkretisieren. A als Diagnosemetrik behalten. -->
 
 # Incident und Lernschleife
 
@@ -538,12 +501,12 @@ Erkennen → Koordinieren → Eingrenzen → Wiederherstellen → Lernen
 
 ## Postmortem: Ursache statt Schuld
 
+- Siehe Vorlesung 4
 - **Befund:** v2-API öffnet zu viele Verbindungen; v1 bleibt gesund
 - **Bedingung:** Testlast und Pool-Konfiguration bildeten Produktion nicht ab
 - **Maßnahme:** Pool-Limit + Lasttest + Canary-Gate für Pool-Wartezeit
 - **Nachweis:** Rollout erneut mit begrenztem Canary testen
 
-<!-- Fiktiver Befund, keine Aussage über Cal.diy. In V4 erschöpft der Kalender-Worker den Pool; hier ist die neue API-Version der Auslöser. Bezug V4: blameless, Maßnahme mit Verantwortlichen und Termin festhalten. -->
 
 ## Wer trägt den Betrieb?
 
@@ -566,25 +529,7 @@ Erkennen → Koordinieren → Eingrenzen → Wiederherstellen → Lernen
 - Beispiel: 20 Deployments, 2 Soforteingriffe → 10 % Change Fail Rate
 - Alle fünf gemeinsam pro Dienst über Zeit betrachten – kein Personen-Ranking
 
-<!-- Dozent: DORA 2026 zählt fünf Kennzahlen; Failed Deployment Recovery Time ist nicht die MTTR aller Incidents aus V4. Postmortem- und CI-Daten können helfen, die Ursachen hinter den Zahlen zu verstehen. -->
-
-# Transfer: KI im Betrieb
-
-## Optionale KI-Beschreibung: anderer Erfolgsbegriff
-
-- Aus V4: KI schlägt Terminbeschreibung vor; Buchung bleibt unabhängig
-- Technisch erfolgreich ist nicht gleich inhaltlich richtig
-- Signale: Latenz, Tokens/Kosten, Verweigerungen, Nutzerkorrekturen
-- Keine Prompts mit Personendaten ungeschützt in Logs oder Traces
-
-## Modellwechsel: wie sicher ausrollen?
-
-- Prompt und Modellversion zusammen mit Ergebnissen nachvollziehen
-- Vorher: kleine, geprüfte Beispiele gegen Qualitätsregression testen
-- Nachher: Canary + Nutzerfeedback; bei Schaden KI-Flag abschalten
-- Shadow Mode testet ohne Nutzerwirkung, kostet aber zusätzliche Aufrufe und Datenzugriffe
-
-<!-- Dozent: Automatische Evals sind ein Gate, kein Beweis für fachliche Wahrheit; manuelle Prüfung bei riskanten Ausgaben. Bei fremden Modell-APIs Datenschutz und Kosten vor Shadow Traffic prüfen. -->
+TODO: Praktiken die für gutes Abschneiten nach DORA sorgen
 
 # Zusammenfassung
 
@@ -601,11 +546,6 @@ Erkennen → Koordinieren → Eingrenzen → Wiederherstellen → Lernen
 - Abstraktion spart Eigenbetrieb, ersetzt weder SLO noch Datenregeln
 - Tradeoff: Tempo, Kontrolle, Kosten und Zuverlässigkeit
 
-## Nächste Vorlesung
-
-- Vorlesung 7: Wiederholung und Klausurvorbereitung
-- Leitfrage: Welche Architekturentscheidung würden wir nach dem Incident ändern?
-
 # Literatur und Quellen
 
 ## Zum Nachlesen
@@ -615,7 +555,6 @@ Erkennen → Koordinieren → Eingrenzen → Wiederherstellen → Lernen
 - Humble, Farley: _Continuous Delivery_ – Deployment Pipeline und Datenmigrationen
 - Majors et al.: _Observability Engineering_ – Logs, Metriken und Traces
 - [OpenTelemetry](https://opentelemetry.io/docs/what-is-opentelemetry/) – Instrumentierung und Collector
-- [PostHog Docs](https://posthog.com/docs/product-analytics) – Analytics, Replay, Error Tracking; [OTLP-Logs](https://posthog.com/docs/logs)
 - [DORA Metrics](https://dora.dev/guides/dora-metrics/) – fünf Lieferkennzahlen
 - [Kubernetes Docs](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) und [Argo CD](https://argo-cd.readthedocs.io/en/stable/user-guide/ci_automation/) – Orchestrierung und GitOps
 - [AWS Lambda Docs](https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtime-environment.html) und [Pricing](https://aws.amazon.com/lambda/pricing/) – Kaltstarts und Kosten als FaaS-Beispiel
