@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">Lastprofil: Wann FaaS, wann Container prüfen?</title>
+  <desc id="desc">Zwei Zeitreihen: links seltene Kalender-Events mit kurzen Spitzen und langen Pausen, rechts dauerhaft hohe Last. Für die erste Last ist FaaS tendenziell passend, für die zweite sind Container zu prüfen. Warmhaltung verursacht auch im Leerlauf Kosten; die Entscheidung verlangt Messungen.</desc>
+  <rect width="1200" height="675" fill="#FFFFFF"/>
+  <g font-family="Arial, Helvetica, sans-serif" fill="#152F43">
+    <text x="42" y="81" font-size="46" font-weight="700">Das Lastprofil macht den Unterschied</text>
+
+    <rect x="40" y="127" width="540" height="449" rx="18" fill="#F8FBFC" stroke="#CFDEE5" stroke-width="2"/>
+    <rect x="620" y="127" width="540" height="449" rx="18" fill="#F8FBFC" stroke="#CFDEE5" stroke-width="2"/>
+    <text x="66" y="176" font-size="34" font-weight="700">Seltene Kalender-Events</text>
+    <text x="646" y="176" font-size="34" font-weight="700">Dauerhaft hohe Last</text>
+
+    <g fill="none" stroke="#D9E5E9" stroke-width="2">
+      <path d="M88 270H546 M88 350H546 M668 270H1126 M668 350H1126"/>
+    </g>
+    <g fill="none" stroke="#6A7F89" stroke-width="2.5">
+      <path d="M88 224V433H546 M668 224V433H1126"/>
+    </g>
+    <text x="96" y="218" font-size="26">Last</text>
+    <text x="676" y="218" font-size="26">Last</text>
+
+    <g fill="#27849B">
+      <rect x="112" y="356" width="18" height="76" rx="2"/>
+      <rect x="133" y="287" width="18" height="145" rx="2"/>
+      <rect x="154" y="318" width="18" height="114" rx="2"/>
+      <rect x="277" y="329" width="18" height="103" rx="2"/>
+      <rect x="298" y="270" width="18" height="162" rx="2"/>
+      <rect x="319" y="340" width="18" height="92" rx="2"/>
+      <rect x="426" y="353" width="18" height="79" rx="2"/>
+      <rect x="447" y="295" width="18" height="137" rx="2"/>
+      <rect x="468" y="324" width="18" height="108" rx="2"/>
+    </g>
+    <path d="M677 292 L717 282 L757 288 L797 275 L837 281 L877 269 L917 280 L957 274 L997 286 L1037 277 L1077 283 L1117 271 L1117 432 L677 432 Z" fill="#D7EBE6"/>
+    <path d="M677 292 L717 282 L757 288 L797 275 L837 281 L877 269 L917 280 L957 274 L997 286 L1037 277 L1077 283 L1117 271" fill="none" stroke="#167C70" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="455" y="472" font-size="26">Zeit →</text>
+    <text x="1034" y="472" font-size="26">Zeit →</text>
+
+    <text x="66" y="519" font-size="32" font-weight="700" fill="#166B83">FaaS passt oft</text>
+    <text x="66" y="555" font-size="26">Keine dauerhafte Worker-Instanz</text>
+    <text x="646" y="519" font-size="32" font-weight="700" fill="#146A60">Container prüfen</text>
+    <text x="646" y="555" font-size="26">Kosten unter Dauerlast vergleichen</text>
+
+    <text x="42" y="617" font-size="26" fill="#963C35">Warmhaltung: weniger Kaltstarts, aber Kosten im Leerlauf.</text>
+    <text x="42" y="655" font-size="26">Nur Tendenzen – Kosten, p95 und Limits unter realer Last messen.</text>
+  </g>
+</svg>

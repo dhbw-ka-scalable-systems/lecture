@@ -1,4 +1,6 @@
 $currentDir = Get-Location
+# Pandoc cannot execute npm's extensionless Unix shim on Windows; use its .cmd launcher.
+$plantumlFilter = if ($IsWindows) { (Get-Command pandoc-plantuml.cmd -ErrorAction Stop).Source } else { 'pandoc-plantuml' }
 
 
 if ($args.Length -ne 0) {
@@ -41,10 +43,10 @@ $results = $targets | ForEach-Object -ThrottleLimit 2 -Parallel {
 
   try {
     if ($t.Type -eq "Slides") {
-      $log = pandoc -f markdown+smart+yaml_metadata_block+rebase_relative_paths --toc --slide-level 2 --number-section --pdf-engine lualatex -t beamer -H preamble.tex -F pandoc-plantuml -o $t.Pdf $t.Source 2>&1 | Out-String
+      $log = pandoc -f markdown+smart+yaml_metadata_block+rebase_relative_paths --toc --slide-level 2 --number-section --pdf-engine lualatex -t beamer -H preamble.tex -F $using:plantumlFilter -o $t.Pdf $t.Source 2>&1 | Out-String
     }
     else {
-      $log = pandoc -f markdown+smart+yaml_metadata_block+rebase_relative_paths --toc --toc-depth 1 --number-section --pdf-engine lualatex -F pandoc-plantuml -o $t.Pdf $t.Source 2>&1 | Out-String
+      $log = pandoc -f markdown+smart+yaml_metadata_block+rebase_relative_paths --toc --toc-depth 1 --number-section --pdf-engine lualatex -F $using:plantumlFilter -o $t.Pdf $t.Source 2>&1 | Out-String
     }
     $code = $LASTEXITCODE
   }
@@ -93,7 +95,7 @@ header-includes: |
   \pagestyle{fancy}
   \fancyfoot[R]{Licensed under CC-BY-SA-4.0}
 ..."
-  pandoc -f markdown+smart+yaml_metadata_block+rebase_relative_paths --toc --toc-depth 1 --pdf-engine lualatex -F pandoc-plantuml --title="Vorlesung Skalierbare Systeme" -o "build/script.pdf" $(Get-ChildItem -Recurse -Path Material/Slides -Filter *.md)
+  pandoc -f markdown+smart+yaml_metadata_block+rebase_relative_paths --toc --toc-depth 1 --pdf-engine lualatex -F $plantumlFilter --title="Vorlesung Skalierbare Systeme" -o "build/script.pdf" $(Get-ChildItem -Recurse -Path Material/Slides -Filter *.md)
   $scriptExit = $LASTEXITCODE
   Remove-Item -Path "Material/Slides/99_Script.md" -Force
   if ($scriptExit -ne 0 -or -not (Test-Path "build/script.pdf")) {

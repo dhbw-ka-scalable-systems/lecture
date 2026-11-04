@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-labelledby="title description" lang="de">
+  <title id="title">Go/Stop-Gate für Cal.diy</title>
+  <desc id="description">Illustrativer Canary mit 90 Prozent Traffic auf v1 und 10 Prozent auf v2. Die separat gemessene p95-Latenz beträgt 400 Millisekunden für v1 und 800 Millisekunden für v2. Die Stop-Grenze liegt bei 1,5 mal v1, also 600 Millisekunden. Weil v2 die Grenze überschreitet, lautet die Entscheidung: Stop, Rollout pausieren.</desc>
+  <rect width="1200" height="675" fill="#fff"/>
+  <g font-family="Arial, Helvetica, sans-serif" fill="#14283d">
+    <text x="60" y="72" font-size="44" font-weight="700">Go/Stop-Gate für Cal.diy</text>
+    <text x="60" y="117" font-size="27">Beispielwerte · v1 und v2 getrennt messen</text>
+
+    <rect x="60" y="148" width="1080" height="133" rx="12" fill="#f1f5f9"/>
+    <text x="82" y="186" font-size="28" font-weight="700">Traffic-Routing</text>
+    <rect x="82" y="207" width="932.4" height="29" fill="#376183"/>
+    <rect x="1014.4" y="207" width="103.6" height="29" fill="#b94c2b"/>
+    <text x="82" y="267" font-size="27">v1 · 90 %</text>
+    <text x="994" y="267" font-size="27">v2 · 10 %</text>
+
+    <text x="60" y="330" font-size="30" font-weight="700">p95 Buchungs-API · je Version</text>
+    <text x="60" y="399" font-size="29" font-weight="700">v1</text>
+    <rect x="295" y="364" width="280" height="42" rx="6" fill="#376183"/>
+    <text x="895" y="398" font-size="29">400 ms</text>
+    <text x="60" y="480" font-size="29" font-weight="700">v2</text>
+    <rect x="295" y="445" width="560" height="42" rx="6" fill="#b94c2b"/>
+    <text x="895" y="479" font-size="29" font-weight="700">800 ms</text>
+    <path d="M715 353 V496" fill="none" stroke="#8d321f" stroke-width="4" stroke-dasharray="10 9"/>
+    <text x="550" y="535" font-size="27" fill="#8d321f">Stop-Grenze: 1,5 × v1 = 600 ms</text>
+
+    <rect x="60" y="559" width="1080" height="90" rx="12" fill="#fbece7" stroke="#9c3723" stroke-width="2"/>
+    <text x="85" y="613" font-size="36" font-weight="700" fill="#822914">STOP · Rollout pausieren</text>
+    <text x="820" y="609" font-size="28" fill="#822914">800 ms &gt; 600 ms</text>
+  </g>
+</svg>

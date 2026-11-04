@@ -1,0 +1,23 @@
+@startuml
+' Kalender-Sync läuft nach dem atomaren Buchungs- und Outbox-Commit.
+top to bottom direction
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 22
+skinparam linetype ortho
+
+rectangle "Buchungs-API" as API #EAF3FF
+database "PostgreSQL\nBuchung + Outbox\nLimit: 100 Verbindungen" as DB #FFF1E8
+rectangle "Outbox-Worker" as Worker #EAF3FF
+queue "Event-Queue\nAlter der Aufträge" as Queue #FFF4D6
+rectangle "Functions\nKalender-Sync\nohne Drosselung:\nbis zu 160 DB-Verbindungen" as FaaS #EAF3FF
+cloud "Kalender" as Kalender #F3F3F3
+
+API -right-> DB
+DB -right-> Worker
+Worker -down-> Queue
+Queue -right-> FaaS
+FaaS -right-> Kalender
+FaaS ..> DB
+@enduml

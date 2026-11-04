@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">POST /bookings: Wo geht die Zeit hin?</title>
+  <desc id="desc">Linearer Zeitstrahl von 0 bis 1.400 Millisekunden: authorize 12 ms, Warten auf eine DB-Verbindung 870 ms, eine DB-Transaktion für Buchung und Outbox 110 ms und 408 ms nicht instrumentiert, Ursache unbekannt. Der Worker läuft später und gehört nicht zum synchronen Request.</desc>
+  <defs>
+    <pattern id="unknown" width="12" height="12" patternUnits="userSpaceOnUse">
+      <rect width="12" height="12" fill="#edf0f4"/>
+      <path d="M-3 3L3 -3M0 12L12 0M9 15L15 9" stroke="#c7ced7" stroke-width="2"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="675" fill="#fff"/>
+  <g font-family="Arial, Helvetica, sans-serif" fill="#17283d">
+    <text x="100" y="66" font-size="38" font-weight="700">Wo geht die Zeit hin?</text>
+    <text x="100" y="111" font-size="27">Ein Request · lineare Zeitskala · Millisekunden ab Start</text>
+
+    <!-- 980 px / 1.400 ms = 0,7 px/ms; all bars share this horizontal scale. -->
+    <rect x="100" y="147" width="980" height="64" rx="8" fill="#182e48"/>
+    <text x="124" y="190" font-size="30" font-weight="700" fill="#fff">POST /bookings</text>
+    <text x="1054" y="190" text-anchor="end" font-size="30" font-weight="700" fill="#fff">1.400 ms</text>
+
+    <path d="M100 238H1080 M100 238V249 M380 238V249 M660 238V249 M940 238V249 M1080 238V249" fill="none" stroke="#596a7c" stroke-width="2"/>
+    <g font-size="26" fill="#33465a">
+      <text x="100" y="279" text-anchor="middle">0</text>
+      <text x="380" y="279" text-anchor="middle">400</text>
+      <text x="660" y="279" text-anchor="middle">800</text>
+      <text x="940" y="279" text-anchor="middle">1.200</text>
+      <text x="1080" y="279" text-anchor="middle">1.400</text>
+    </g>
+
+    <!-- 0–12 ms: actual width 8,4 px; the label is a callout, not an enlarged span. -->
+    <rect x="100" y="306" width="8.4" height="45" fill="#445a75"/>
+    <path d="M109 328H136" stroke="#445a75" stroke-width="2"/>
+    <text x="145" y="337" font-size="27" font-weight="700">authorize · 12 ms</text>
+    <path d="M108.4 352V377" fill="none" stroke="#8793a1" stroke-width="2" stroke-dasharray="5 5"/>
+
+    <!-- 12–882 ms: DB connection pool wait, 870 ms. -->
+    <rect x="108.4" y="378" width="609" height="62" rx="4" fill="#aa4b2b"/>
+    <text x="130" y="418" font-size="28" font-weight="700" fill="#fff">DB-Pool: Warten · 870 ms</text>
+    <path d="M717.4 441V456" fill="none" stroke="#8793a1" stroke-width="2" stroke-dasharray="5 5"/>
+
+    <!-- 882–992 ms: a single booking + outbox DB transaction, 110 ms. -->
+    <rect x="717.4" y="457" width="77" height="54" rx="4" fill="#146960"/>
+    <path d="M795 483H811" stroke="#146960" stroke-width="2"/>
+    <text x="820" y="477" font-size="26" font-weight="700">DB: Buchung + Outbox</text>
+    <text x="820" y="509" font-size="26">110 ms · eine Transaktion</text>
+    <path d="M794.4 512V535" fill="none" stroke="#8793a1" stroke-width="2" stroke-dasharray="5 5"/>
+
+    <!-- 992–1.400 ms: uninstrumented remainder, not assigned to any service. -->
+    <rect x="794.4" y="536" width="285.6" height="81" rx="4" fill="url(#unknown)" stroke="#677586" stroke-width="2"/>
+    <text x="811" y="571" font-size="27" font-weight="700">408 ms · unbekannt</text>
+    <text x="811" y="602" font-size="26">nicht instrumentiert</text>
+
+    <text x="100" y="657" font-size="26" fill="#33465a">Worker: später, außerhalb des synchronen Requests.</text>
+  </g>
+</svg>
