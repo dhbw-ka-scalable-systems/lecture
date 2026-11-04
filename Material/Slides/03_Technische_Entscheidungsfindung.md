@@ -494,22 +494,24 @@ actor "Büro" as B
 [API] as API
 database "Object\nStorage" as OS
 database "PostgreSQL\nEinsätze, Fotos,\npartitioniert nach Monat" as DB
-queue "Ereignis-Log" as Q
-[Verkleinern] as R
+queue "Log: Foto\nhochgeladen" as Q
 [Virenscan] as V
+queue "Log: Foto\ngeprüft" as Q2
+[Verkleinern] as R
 [Texterkennung] as O
 database "Suchindex" as IX
 Mo --> API : Upload je Foto,\nwiederholbar
 B --> API : Suche
 API --> OS : Datei
 API --> DB : Metadaten +\nEreignis (Outbox)
+API --> IX : Rechte geprüft
 DB --> Q
-Q -right-> R
-Q -right-> V
-Q -right-> O
-R -right-> OS : Vorschau
-O -right-> IX : Text
-API -right-> IX : Rechte geprüft
+Q -> V
+V -> Q2 : sauber, sonst\nQuarantäne
+Q2 --> R
+Q2 --> O
+R --> OS : Vorschau
+O --> IX : Text
 @enduml
 ```
 
@@ -517,7 +519,7 @@ API -right-> IX : Rechte geprüft
 
 - Daten: Metadaten in PostgreSQL, Originale und Vorschauen im Object Storage, Volltext im Suchindex; ca. 650 TB gehören nicht in die Datenbank
 - Partitionierung jeden Monat: 220 Mio. Zeilen bleiben handhabbar, Löschen nach zehn Jahren heißt Partition entfernen
-- Verarbeitung: Log statt Queue, weil drei Konsumenten dasselbe Ereignis brauchen; Upload je Foto und wiederholbar
+- Verarbeitung: erst Virenscan, dann Verkleinern und Texterkennung parallel; Log statt Queue, weil zwei Konsumenten dasselbe Ereignis brauchen; Upload je Foto und wiederholbar
 - Rechte: Monteur sieht nur eigene Einsätze, geprüft in der API, nicht in der App
 - Texterkennung austauschbar: erst klassische OCR, ein LLM nur, wenn es gemessen besser ist
 - Bewusst nicht: Komprimierung beim Client, Verarbeitung synchron im Upload, Fotos in der Datenbank; Annahme: Fotos verlassen das Rechenzentrum nicht
