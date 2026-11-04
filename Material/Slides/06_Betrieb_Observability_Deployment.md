@@ -15,7 +15,6 @@ toc: true
 section-titles: true
 ...
 
-
 # Einstieg und Rückblick
 
 ## Heute: Eine Änderung geht live
@@ -25,14 +24,12 @@ section-titles: true
 - Lokal funktioniert alles – was passiert beim Ausrollen?
 - Weg: **prüfen → ausliefern → beobachten → eingreifen → lernen**
 
-
 ## Was wir schon wissen (Vorlesungen 2 und 4)
 
 - **V2:** Die Datenbank verhindert Doppelbuchungen; Mandantengrenzen gelten auch für neue Felder.
 - **V4:** Buchung + Outbox atomar; Kalender-Sync läuft nachgelagert.
 - **V4:** SLI = Anteil gültiger Buchungsabsichten mit Bestätigung innerhalb von 2 s.
 - **V4:** SLO = mindestens 99,9 % in rollierenden 28 Tagen.
-
 
 ## Lernziele
 
@@ -62,13 +59,19 @@ section-titles: true
 ## Delivery oder Deployment?
 
 ```text
-Commit -> CI (Build + Tests) -> auslieferbares Image
-                                 | manuelle Freigabe: Delivery
-                                 ` automatisch live: Deployment
+Commit -> CI (Build + Tests) -> geprüftes Artefakt
+                                     |
+                  +------------------+-----------------+
+                  |                                    |
+         Continuous Delivery                Continuous Deployment
+          manuelle Freigabe                   automatisch live
+                  |                                    |
+                  +------------> Produktion <----------+
 ```
 
-- Cal.diy: Image v2 testen, dann Canary bewusst freigeben
-- Continuous Delivery heißt **nicht**: jeder Commit ist schon live
+- **Gemeinsam:** automatisch prüfen und dasselbe Artefakt ausliefern.
+- **Unterschied:** Bei Delivery kann eine manuelle Produktionsfreigabe vorgesehen sein; bei Deployment geschieht dies automatisch.
+- Cal.diy: v2 zuerst prüfen, dann den Canary bewusst freigeben.
 
 ## Ein Artefakt, mehrere Umgebungen
 
@@ -92,11 +95,10 @@ S ..> P : Prüfung / Freigabe
 - Bei Fehler abbrechen; Version und Testergebnis nachvollziehbar halten
 - Secrets erst zur Laufzeit bereitstellen – nie ins Image
 
-
 ## Was testet die Pipeline – und was nicht?
 
 | Prüfung | Fängt ab | Fängt nicht sicher ab |
-|:--|:--|:--|
+| :-- | :-- | :-- |
 | Unit-Test | Fehler in Notizlogik | echte DB-Konflikte |
 | Integrationstest | Migration + Buchungsregel | Produktionslast |
 | Staging-Flow | Notiz speichern und lesen | reale Traffic-Verteilung |
@@ -104,17 +106,33 @@ S ..> P : Prüfung / Freigabe
 
 **Best Practice:** schnelle Checks zuerst, kritische Nutzerpfade vor dem Rollout.
 
-TODO: Canary Folie einfügen mit Definition + eventuell Bild.
+## Canary: schrittweises Ausrollen
 
-## DevOps
+- **Definition:** Bei einem *Canary Deployment* läuft v2 zunächst nur für einen kleinen Anteil des produktiven Traffics; v1 bleibt verfügbar.
+- **Idee:** Risiko begrenzen, v1 und v2 unter vergleichbarer realer Last messen und dann schrittweise erweitern.
 
-TODO: weiter ausführen, Grundlegende Definition, Vorteile ...
+```text
+                  +--> v1 (z. B. 90 %)
+Nutzer -> Router -|
+                  +--> v2 (z. B. 10 %) -> messen -> Go / Stop
+```
 
-- Kleine Änderungen, häufig integrieren: weniger auf einmal riskieren
-- Reviews und automatisierte Tests vor dem Merge
-- Entwicklung und Betrieb teilen SLO, On-Call und Rückweg
-- Telemetrie und Postmortems fließen in die nächste Änderung
-- Tradeoff: mehr Automatisierung braucht Pflege und klare Ownership
+- **Wichtig:** Das ist eine Rollout-Strategie, kein eigener Testtyp
+
+## DevOps: mehr als CI/CD
+
+- **Definition:** DevOps verbindet Entwicklung (*Dev*) und IT-Betrieb (*Ops*) durch Zusammenarbeit, gemeinsame Verantwortung und schnelle Feedbackschleifen.
+- **Ziel:** Änderungen zuverlässig und häufig zu Usern bringen – statt sie am Übergang zwischen Teams zu übergeben.
+- **Praktiken:** kleine Änderungen, CI/CD, automatisierte Tests, Observability und gemeinsame Incident-Bearbeitung.
+- **Kultur:** Teams optimieren den gesamten Nutzerfluss; SLOs und Betriebserfahrungen beeinflussen die Entwicklung.
+- **Nutzen:** kürzere Feedbackzeit, besser reproduzierbare Releases und schnellere Wiederherstellung – nicht einfach „ein neues Tool“.
+
+## DevOps: Verantwortung und Tradeoffs
+
+- **Build it, run it:** Das Team kennt Rollout, Alerts, Runbook und Rückweg der eigenen Änderung.
+- **Weniger Übergaben:** Wer entwickelt, sieht Produktionsprobleme früh und verbessert Tests und Architektur.
+- **Kein Organisationsdogma:** On-Call und Plattformbetrieb können geteilt oder spezialisiert sein; Ownership muss klar sein.
+- **Tradeoff:** Automatisierung, Telemetrie und Rufbereitschaft verursachen Aufwand – sie sollen messbar Risiko und Wartezeit senken.
 
 ## Wo gehört die Prüfung hin?
 
@@ -130,53 +148,193 @@ TODO: weiter ausführen, Grundlegende Definition, Vorteile ...
 - Für die optionale Notiz: kein Backfill und kein Entfernen alter Felder nötig
 - Code-Rollback auf v1 bleibt möglich; die neue Spalte bleibt bestehen
 
-
 ## GitOps: gewünschter Zustand in Git
 
+- **Prinzip:** Git enthält deklarativ den *gewünschten* Zustand, z. B. welche Image-Version laufen soll.
+
 ```text
-CI baut Image -> Git: v2-Digest -> Controller -> Cluster
-                          ^                    |
-                          +---- Abgleich ------+
+CI baut Image -> Registry (sha256:...) -> Git-PR: neuer Digest
+                                      |
+                                 Review / Merge
+                                      |
+                          GitOps-Controller -> Cluster
+                                      ^             |
+                                      +-- Abgleich -+
 ```
 
-- Review der Konfiguration; Controller erkennt Abweichungen (Drift)
-- Kein CI-Zugriff auf produktive Cluster nötig; Freigabe vor Git-Änderung
-- Preis: weiterer Controller, Git-Konflikte und verzögerte Synchronisation
+- Controller (z. B. Argo CD) vergleicht gewünschten mit tatsächlichem Zustand und synchronisiert nach Freigabe.
+- **Vorteile:** Review, Änderungshistorie und nachvollziehbare Rückkehr zu einer Konfiguration; Drift wird sichtbar.
+- **Grenzen:** zusätzliche Infrastruktur und Rechte; Datenbankmigrationen brauchen weiterhin eigene Koordination.
 
-TODO: weiter ausführen. Was bedeutet das in der Praxis? Wie wird das umgesetzt? Vorteile?
+## GitOps: das Deployment von Cal.diy in der Praxis
 
-## Deployment ist nicht Release
+1. CI baut und testet `cal-diy`; das Image landet unveränderlich in einer Registry (`sha256`-Digest).
+2. Ein Pull Request ändert im **Konfigurations-Repository** die referenzierte Image-Version und ggf. Ressourcenlimits.
+3. Nach Review/Merge gleicht z. B. **Argo CD** den Git-Zustand mit dem Cluster ab; bei manuellem Sync folgt eine Freigabe.
+4. Status und Abweichungen sind sichtbar; Rollback = vorherigen Konfigurationsstand wiederherstellen **und** Datenkompatibilität prüfen.
 
-- **Deployment:** v2 läuft technisch; **Release:** Notiz ist sichtbar
-- Feature Flag: Notiz zunächst nur für ein internes Team
-- Abschalten geht schnell – bereits geschriebene Daten bleiben
-- Preis: zusätzliche Zustände; Flags mit Besitzer und Löschtermin
+## Deployment != Release
 
-TODO: Feature flags weiter ausführen.
+- **Deployment:** v2 ist technisch in Produktion; **Release:** Nutzende können die Notiz tatsächlich verwenden.
+- **Feature Flag:** `internal_note_enabled` ist zunächst nur für das interne Team aktiv.
+- **Vorteil:** Funktion kontrolliert freigeben oder deaktivieren, ohne das Image erneut auszuliefern.
+- **Grenze:** Bereits geschriebene Daten bleiben; ein Flag ersetzt weder Autorisierung noch ein Code-Rollback.
+- **Betrieb:** Flags mit Eigentümer, Zweck, Metrik und geplantem Löschtermin verwalten.
+
+## Feature Flags: wie wird die Funktion eingeschaltet?
+
+```text
+Image v2 ist überall installiert
+            |
+Flag-Evaluierung (z. B. Team / Mandant / Prozentanteil)
+            |
+      AN: Notiz anzeigen    AUS: Notiz verstecken
+```
+
+- Der Dienst liest die Flag-Konfiguration zur Laufzeit (lokale Konfiguration oder Feature-Flag-Service).
+- Zielgruppensteuerung: interne Mitarbeitende → Pilotmandanten → alle berechtigten Nutzenden.
+- **Sicherheitsregel:** Die API prüft Berechtigungen **immer** selbst – auch bei aktiviertem Flag.
+- **Aufräumen:** Nach stabilem Release Flag und ungenutzten Codepfad entfernen.
+
+# Risiko beim Rollout begrenzen
+
+## Problem: v2 ist getestet – aber wie viel Risiko?
+
+- Produktivlast und Staging unterscheiden sich
+- Rollout betrifft gleichzeitig API, Datenbank und Worker
+- Ein schneller Rückweg zählt mehr als ein schönes Dashboard
+- Vorab festlegen: **Was stoppt den Rollout? Wer entscheidet?**
+
+## Strategien im Vergleich
+
+| Strategie | Vorteil | Grenze |
+| :-- | :-- | :-- |
+| Recreate | einfach | Unterbrechung beim Wechsel |
+| Rolling Update | wenig Zusatzkapazität | v1/v2 überlappen; nicht automatisch exakter Traffic-Anteil |
+| Blue/Green | schneller Traffic-Wechsel | parallele Umgebung; Datenbank oft gemeinsam |
+| Canary | kleiner Auswirkungsbereich | gezieltes Routing und Messung nach Version nötig |
+
+**Cal.diy:** Canary, wenn Versions-Traffic und Messung verfügbar sind; andernfalls Rolling mit sicherem Stopp. Das geht mit Load Balancer, PaaS, Service-Mesh oder Orchestrator.
+
+## Canary: erst messen, dann erweitern
+
+```text
+10 % v2 -> messen -> Go/Stop -> 50 % -> erneut prüfen -> 100 %
+                         |
+                      Stop: zurück zu v1
+```
+
+- Wenige Nutzer zuerst: kleiner Auswirkungsbereich, aber wenig Messdaten
+- v1 und v2 getrennt und bei vergleichbarem Traffic beobachten
+- Nicht „grün“, nur weil die Gesamtfehlerquote stabil bleibt
+
+## Canary: Versionen getrennt betrachten
+
+![](media/06_canary_gate.pdf){height=82%}
+
+## Go/Stop-Gate für Cal.diy
+
+- **p95:** Latenzwert, den mindestens 95 % der beobachteten Requests nicht überschreiten.
+- **Stop:** p95 von v2 > 1,5 × p95 von v1 oder DB-Pool-Wartezeit p95 > 200 ms.
+- **Go:** Grenzen eingehalten **und** Buchungs-SLI stabil; sonst pausieren oder zurückrollen.
+- **Verantwortung:** Release-Team entscheidet; zu wenig Traffic bedeutet **keinen** Beweis für Sicherheit.
+
+## Health Checks sind nicht das SLO
+
+- **Liveness:** Hängt der Prozess? Nur bei echtem Hänger neu starten.
+- **Readiness:** Kann die Instanz aktuell Anfragen annehmen? Nur bereite Instanzen erhalten Traffic.
+- Ein `HTTP 200` vom Health-Endpunkt belegt **nicht**, dass Buchungen erfolgreich sind (SLO).
+- **Bezug zu Failover:** Fallen Instanzen aus, übernimmt gesunde Kapazität – sofern Routing und Ressourcen reichen.
+- **Achtung:** Prüft Readiness zu streng eine gemeinsam ausgefallene Datenbank, kann sie *alle* API-Instanzen gleichzeitig aus dem Routing nehmen.
+
+## Rollout-Entscheidung: Go, Pause oder Stop?
+
+- v2 erhält 10 % Traffic; ihre p95-Latenz ist doppelt so hoch wie bei v1.
+- Die Gesamtfehlerquote bleibt fast unverändert; v2 belegt doppelt so viele DB-Verbindungen.
+- **Entscheidung?** Das vorab definierte Gate spricht für **Stop / Rückkehr zu v1**, nicht für 50 %.
+- **Diskussion:** Welche zwei zusätzlichen Signale helfen? Z. B. Buchungs-SLI **je Version** und p95 **der DB-Pool-Wartezeit**.
+
+## Rückweg: Code und Daten sind verschieden
+
+- Bei Schaden: Canary stoppen, v2-Traffic zurück auf v1
+- Nullable Spalte bleibt vorerst bestehen; nicht blind „zurückmigrieren“
+- Falls v2 schon neue Daten geschrieben hat: Lesbarkeit mit v1 prüfen
+- Roll-forward statt Rollback, wenn neue Daten nicht rückwärtskompatibel sind
 
 # Laufzeit und Orchestrierung
 
 ## Welche Laufzeit für Cal.diy?
 
-| Modell | Plus | Minus |
-|:--|:--|:--|
-| Server (Bare Metal) | volle Kontrolle | Hardware selbst betreiben |
-| VM | Isolation, eigener OS-Stack | OS und Updates pflegen |
-| Container | reproduzierbares Image | Host und Orchestrierung nötig |
-| Serverless (FaaS) | Betrieb/Skalierung delegiert | Laufzeit- und Plattformgrenzen |
+| Modell | Vorteil | Nachteil |
+| :-- | :-- | :-- |
+| Bare Metal | maximale Kontrolle | Hardware selbst betreiben |
+| Virtuelle Maschine | eigener OS-Stack, gute Isolation | Gast-OS patchen und verwalten |
+| Container | paketierte Laufzeit, gut ersetzbar | Host / Plattform weiter nötig |
+| FaaS (Serverless) | ereignisgesteuert, Anbieter skaliert Ausführung | Laufzeit-, Parallelitäts- und Plattformgrenzen |
 
-- Mehr Abstraktion vereinfacht Bereitstellung; weniger Kontrolle über den Unterbau
-- **Nicht linear:** Container auf eigenen Servern geben mehr Kontrolle als auf PaaS
+- **Wichtig:** Container sind ein *Paketierungs-/Prozessmodell*, FaaS ein *Betriebsmodell* – kein striktes Entweder-oder.
+- Wer Container auf einer Managed-Plattform ausführt, delegiert ebenfalls viel Betrieb.
+
+## Container: vom Image zum laufenden Prozess
+
+```text
+Quellcode + Abhängigkeiten -> CI -> Container-Image -> Registry
+                                              |
+                                      Host / Plattform startet
+                                              |
+                                    laufender Container-Prozess
+```
+
+- **Image:** unveränderliches Paket mit Anwendung, Runtime und Abhängigkeiten; **Container:** laufende, isolierte Instanz davon.
+- Container teilen typischerweise den Kernel des Hosts; eine VM bringt einen eigenen Gast-Kernel mit.
+- Neustart/Ersetzung müssen möglich sein: Zustand in PostgreSQL oder persistenten Diensten, nicht im Container-Dateisystem.
+- **Cal.diy:** identisches API-Image in Staging und Produktion; unterschiedliche Secrets und Konfiguration zur Laufzeit.
+
+## Container und FaaS im Vergleich
+
+| Frage | Container-Dienst | FaaS |
+| :-- | :-- | :-- |
+| Start | Plattform startet dauerhaft laufende Prozesse | Ereignis löst Funktionsaufruf aus |
+| Skalierung | Replikate / CPU / Requests konfigurieren | parallele Ausführungen innerhalb von Limits |
+| Laufzeit | HTTP-Server oder langlebiger Worker | Handler, oft kurzlebige Aufgaben |
+| Kosten | oft reservierte/laufende Kapazität | häufig Aufrufe und Ausführungsressourcen |
+| Typisches Risiko | Leerlauf, Rollout-/Hostbetrieb | Kaltstarts, Quotas, Verbindungsstürme |
+
+**Beides** kann auf gemanagter Infrastruktur laufen; die tatsächliche Kosten- und Latenzkurve messen.
 
 ## Serverless: Wer betreibt die Server?
 
-- Server bleiben – der Anbieter verwaltet sie; wir liefern Code und Konfiguration
-- Hier: **Functions as a Service (FaaS)**, ereignisgesteuert und zustandslos
-- Bedarfsgerechte Skalierung und nutzungsabhängige Abrechnung
-- Risiken: Kaltstart, Limits, Parallelität, Anbieterbindung
-- Dauerbetrieb mit gleichmäßiger Last kann anderswo günstiger sein
+- **Serverless ≠ ohne Server:** Der Anbieter verwaltet Server und Ausführungsumgebungen; das Team liefert Code, Rechte und Konfiguration.
+- **FaaS:** Event oder HTTP-Request startet einen Handler; die Plattform verwaltet Instanzen und Parallelität.
+- Neue Ausführungsumgebungen brauchen ggf. Initialisierung (**Kaltstart**); warme Umgebungen können wiederverwendet werden.
+- **Vorteil:** seltene / schwankende Arbeit benötigt keine permanent reservierten Worker.
+- **Grenzen:** Timeouts, CPU/Speicher, Parallelität, Netzwerk- und Plattform-APIs unterscheiden sich je Anbieter.
 
-TODO: FaaS Runtime erklären, Beispiele und Unterschiede z.B. Cloudflare Worker sehr leichtgewichtig, AWS Lambda mit mehr Limits und Kaltstart. 
+## FaaS-Runtime: Was passiert bei einem Event?
+
+```text
+Event / HTTP-Aufruf
+      -> Plattform weist Ausführungsumgebung zu
+      -> ggf. Init: Runtime + Abhängigkeiten + Verbindungen
+      -> Handler verarbeitet Auftrag
+      -> Antwort / Ack; Umgebung ggf. wiederverwenden
+```
+
+- **Kaltstart:** Initialisierung bei neuer Umgebung; **Warmstart:** vorhandene Umgebung wird erneut genutzt.
+- Keine dauerhafte Prozesslaufzeit voraussetzen; externe Seiteneffekte müssen Wiederholungen tolerieren.
+- Beispiel Cal.diy: Outbox-Event → Kalender-Handler; Queue puffert Spitzen, Idempotenz verhindert Doppelarbeit.
+
+## FaaS ist nicht gleich FaaS: Lambda vs. Workers
+
+| | AWS Lambda | Cloudflare Workers |
+| :-- | :-- | :-- |
+| Ausführung | isolierte Execution Environment + Runtime; Init/Invoke | sehr leichtgewichtige V8-Isolates |
+| Sprachen/APIs | mehrere Runtimes, Container-/ZIP-Pakete | JS/TS, Web APIs und WebAssembly-Ökosystem |
+| Start/Lebensdauer | Kaltstarts möglich; Warm-Reuse, optionale Vorwärmung | Isolates starten meist sehr schnell; ebenfalls Limits |
+| Typische Nähe | Cloud-Events, Queues, Backend-Integrationen | Edge-/HTTP-Logik, verteilte Requests |
+
+- Kein „besser“ ohne Lastprofil: CPU, Laufzeit, Speicher, Datenbankzugriff, Region und Preis vergleichen.
+- **Cal.diy:** Kalender-Sync als Event-Handler prüfen; direkte PostgreSQL-Verbindungen am Edge besonders hinterfragen.
 
 ## Cal.diy: Wo passt eine Function?
 
@@ -201,7 +359,7 @@ TODO: FaaS Runtime erklären, Beispiele und Unterschiede z.B. Cloudflare Worker 
 ## Wann lohnt sich FaaS?
 
 | Lastprofil | Tendenz | Grund |
-|:--|:--|:--|
+| :-- | :-- | :-- |
 | Seltene Kalender-Events | FaaS | keine dauerhaft laufende Worker-Instanz |
 | Kurze, starke Spitzen | FaaS prüfen | skaliert schnell; Limits und DB schützen |
 | Dauerhaft hohe Last | Container prüfen | nutzungsabhängige Kosten summieren sich |
@@ -219,12 +377,9 @@ Container: laufende Kapazität + Netz/Logs + Betriebsaufwand
 - Kosten **und** p95, DB-Verbindungen, Limits unter realer Last messen
 - Cal.diy: Worker eher geeignet als die synchrone Buchungs-API
 
-
 ## Serverless: Das Lastprofil entscheidet
 
 ![](media/06_serverless_lastprofil.pdf){height=82%}
-
-TODO: noch mehr auf Container eingehen, Unterschiede zu FaaS klarer darstellen
 
 ## Warum Container orchestrieren?
 
@@ -233,7 +388,13 @@ TODO: noch mehr auf Container eingehen, Unterschiede zu FaaS klarer darstellen
 - v1 und v2 gleichzeitig: Wer steuert Update und Rückweg?
 - Orchestrator löst diese Betriebsfragen, nicht die DB-Konsistenz
 
-TODO: Kubernetes Grundlagen besser darstellen, dann erst Details.
+## Kubernetes
+
+- **Cluster:** mehrere Rechner (Nodes) plus *Control Plane*, die den gewünschten Zustand verwaltet.
+- **Pod:** kleinste planbare Einheit; enthält einen oder mehrere eng gekoppelte Container.
+- **Deployment:** beschreibt z. B. „vier API-Pods mit Image v2“; Controller ersetzt ausgefallene Pods.
+- **Service:** stabile virtuelle Adresse und Weiterleitung zu passenden, bereiten Pods.
+- **Control Loop:** Ist-Zustand wird laufend mit dem Soll-Zustand abgeglichen.
 
 ## Kubernetes: die Bausteine
 
@@ -242,21 +403,22 @@ TODO: Kubernetes Grundlagen besser darstellen, dann erst Details.
 left to right direction
 actor Gast
 rectangle "Service\n(stabile Adresse)" as S
-node "Deployment: Buchungs-API" {
+node "Deployment: Buchungs-API\nverwaltet ReplicaSet/Pods" {
   rectangle "Pod v1" as A
   rectangle "Pod v2" as B
 }
 database "PostgreSQL\n(extern)" as DB
 Gast --> S
-S --> A
-S --> B
+S --> A : bereit
+S --> B : bereit
 A --> DB
 B --> DB
 @enduml
 ```
 
-- Deployment regelt gewünschte Pod-Anzahl und Rolling Updates
-- Service verteilt Anfragen; Readiness bestimmt, wer Traffic erhält
+- Ein **Pod** beherbergt den laufenden API-Container; der **Service** verteilt auf bereite Pods.
+- Beim Rolling Update kann das Deployment vorübergehend v1 und v2 gleichzeitig betreiben.
+- Für *gewichtete* Canaries zusätzlich Routing-Unterstützung (Gateway, Mesh, PaaS etc.) nutzen.
 
 ## Kubernetes: Möglichkeiten und Grenzen
 
@@ -267,7 +429,6 @@ B --> DB
 - Mehr Pods können den DB-Pool überlasten; Datenbank separat betreiben
 - Alternative: Managed Container/PaaS bei weniger Betriebsaufwand
 
-
 ## Kubernetes: gewünschter Zustand und Rolling Update
 
 ```text
@@ -275,12 +436,11 @@ Deployment: 4 Pods mit Image v1 -> Image v2 eintragen
 Controller: neuen Pod starten -> Readiness prüfen -> alten entfernen
 ```
 
-- `maxSurge: 1`: höchstens ein zusätzlicher Pod beim Update
-- `maxUnavailable: 0`: vier verfügbare Pods erhalten, wenn Kapazität reicht
-- Hängt v2 in Readiness, stoppt der Fortschritt; nicht blind weiterrollen
-- Service verteilt auf bereite Pods – **keine exakte 10-%-Canary-Steuerung**
-
-TODO: Klarstellen, dass das nicht nur über Kubernetes geht!
+- `maxSurge: 1`: höchstens ein zusätzlicher Pod beim Update.
+- `maxUnavailable: 0`: vier verfügbare Pods sollen erhalten bleiben, wenn Kapazität reicht.
+- Hängt v2 in Readiness, stockt das Update; Fehler des Readiness-Signals gesondert prüfen.
+- Ein Kubernetes-Service verteilt auf bereite Pods, **nicht automatisch exakt 10 %** auf v2.
+- **Kein Kubernetes-Monopol:** Rolling Updates funktionieren auch mit Load Balancern, VM-Gruppen und Managed-Container-Diensten.
 
 ## Kubernetes: Rolling Update im Ablauf
 
@@ -294,75 +454,6 @@ TODO: Klarstellen, dass das nicht nur über Kubernetes geht!
 - `maxReplicas` und Poolgrößen begrenzen; DB-Signale mitbeobachten
 - HPA ersetzt weder Kapazitätsplanung noch Canary-Go/Stop-Gate
 
-
-TODO: den folgenden Abschnitt vermutlich weiter vorschieben, vor technischen Details und Kubernetes. Risiko + Strategien sind allgemeiner.
-# Risiko beim Rollout begrenzen
-
-## Problem: v2 ist getestet – aber wie viel Risiko?
-
-- Produktivlast und Staging unterscheiden sich
-- Rollout betrifft gleichzeitig API, Datenbank und Worker
-- Ein schneller Rückweg zählt mehr als ein schönes Dashboard
-- Vorab festlegen: **Was stoppt den Rollout? Wer entscheidet?**
-
-## Strategien im Vergleich
-
-| Strategie | Vorteil | Nachteil |
-|:--|:--|:--|
-| Recreate | einfach | Unterbrechung |
-| Rolling | wenig Zusatzkapazität | Versionen überlappen |
-| Blue/Green | schneller Traffic-Wechsel | doppelte Umgebung; DB bleibt geteilt |
-| Canary | kleiner Auswirkungsbereich | Traffic-Routing und Messung nötig |
-
-**Für unsere Änderung:** Canary, falls Traffic und Versionen getrennt messbar sind; sonst Rolling mit schnellem Stopp.
-
-## Canary: erst messen, dann erweitern
-
-```text
-10 % v2 -> messen -> Go/Stop -> 50 % -> erneut prüfen -> 100 %
-                         |
-                      Stop: zurück zu v1
-```
-
-- Wenige Nutzer zuerst: kleiner Auswirkungsbereich, aber wenig Messdaten
-- v1 und v2 getrennt und bei vergleichbarem Traffic beobachten
-- Nicht „grün“, nur weil die Gesamtfehlerquote stabil bleibt
-
-## Canary: Versionen getrennt betrachten
-
-![](media/06_canary_gate.pdf){height=82%}
-
-## Go/Stop-Gate für Cal.diy
-
-- **Vorab:** 15 Minuten und mindestens 200 Buchungsabsichten je Version
-- **Stop:** p95 von v2 > 1,5 × v1 oder Pool-Wartezeit p95 > 200 ms
-- **Go:** Grenzen eingehalten, Buchungs-SLI stabil; sonst pausieren
-- **Verantwortung:** Release-Team entscheidet; bei zu wenig Traffic weiter warten
-
-
-## Health Checks sind nicht das SLO
-
-- **Liveness:** hängt der Prozess? Neustart nur dann sinnvoll
-- **Readiness:** kann diese Instanz jetzt Traffic annehmen?
-- „HTTP 200“ sagt nichts über erfolgreiche Buchungen
-- Falsche Readiness kann alle Instanzen gleichzeitig aus dem Traffic nehmen
-
-TODO: Verweis Failover
-
-## Rollout-Entscheidung 
-
-- v2 erhält 10 % Traffic; p95 ist doppelt so hoch wie bei v1.
-- Gesamtfehlerquote bleibt fast unverändert.
-- v2 belegt doppelt so viele DB-Verbindungen.
-- Frage: weiterrollen, pausieren oder zurück? Welche zwei Signale fehlen?
-
-## Rückweg: Code und Daten sind verschieden
-
-- Bei Schaden: Canary stoppen, v2-Traffic zurück auf v1
-- Nullable Spalte bleibt vorerst bestehen; nicht blind „zurückmigrieren“
-- Falls v2 schon neue Daten geschrieben hat: Lesbarkeit mit v1 prüfen
-- Roll-forward statt Rollback, wenn neue Daten nicht rückwärtskompatibel sind
-
 # Auswirkungen sichtbar machen
 
 ## Problem: „Langsam“ ist noch keine Diagnose
@@ -375,93 +466,121 @@ TODO: Verweis Failover
 ## Drei Signale – drei Fragen
 
 | Signal | Frage zum Buchungsrequest | Grenze |
-|:--|:--|:--|
+| :-- | :-- | :-- |
 | Metrik | Wie viele sind langsam? | kein einzelner Ablauf |
 | Log | Was geschah bei Buchung X? | kein Gesamtbild |
 | Trace | Wo wartete dieser Request? | nur erfasste Requests |
 
 **Best Practice:** Version und Trace-ID korrelieren; Signale nicht gegeneinander ausspielen.
 
-TODO: Beispiele für Metriken, Logs und Traces zeigen. Bilder aus OTel Doku?
--> Folien von weiter hinten hierher verschieben
-
-## OpenTelemetry (OTel): Signale transportieren
-
-- SDK instrumentiert Cal.diy: Spans, Metriken, ggf. Logs
-- Trace-Kontext verbindet API, Outbox und Worker
-- Collector empfängt, filtert und verteilt Telemetrie (OTLP)
-- **OTel ist kein Dashboard und keine Datenbank**: Backend zusätzlich nötig
-- Sampling und Datenschutz vor dem Export festlegen
-
-## Möglicher Betriebsstack für Cal.diy
+## Dieselbe Störung aus drei Perspektiven
 
 ```text
-Cal.diy --OTel--> Collector -- Metriken --> Prometheus --+
-                         |-- Traces ----> Tempo --------+--> Grafana
-                         `-- Logs ------> Loki ---------+
+METRIK   v2: p95 Buchungsbestätigung = 1,4 s (v1: 0,5 s)
+LOG      event=booking.slow trace_id=abc123 db_wait_ms=870
+TRACE    POST /bookings -> DB-Pool warten (870 ms) -> SQL
 ```
 
-- Selbst betrieben: flexible Abfragen, aber Storage, Betrieb und Kosten
-- Managed Observability: weniger Betrieb, dafür Preis und Datenabfluss
-- Für die Lehre reicht die Architektur; kein Live-Stack nötig
-
-TODO: Klarstellen, dass der LGTM Stack nur ein Beispiel ist! OTel ist ein Standard
-
-## Betriebs- und Nutzerperspektive: zwei Wege
-
-![](media/06_observability_wege.pdf){height=82%}
+- **Metrik:** Welche Nutzerwirkung und wie oft? (Zeitreihe, Version, Zeitraum)
+- **Log:** Welches konkrete Ereignis und welche Attribute? (kein Personeninhalt)
+- **Trace:** Welcher Schritt verursachte die Wartezeit? (zusammenhängende Spans)
+- **Zusammenspiel:** v2-Dashboard → auffällige Trace-ID → DB-Pool-Log → mögliche Ursache.
 
 ## Metriken: Nutzerwirkung zuerst
 
-- **Rate:** gültige Buchungsabsichten pro Minute
-- **Errors:** schlechte Ereignisse gemäß Buchungs-SLI aus Vorlesung 4
-- **Duration:** Bestätigungszeit, z. B. p95 statt nur Durchschnitt
-- Ergänzend: Pool-Wartezeit und Alter der Kalender-Outbox
-
+- **Rate:** gültige Buchungsabsichten pro Minute, getrennt nach Version.
+- **Errors:** nicht bestätigte bzw. zu spät bestätigte Absichten gemäß SLI aus V4.
+- **Duration:** Dauer von Anfrage bis Bestätigung; p95 und Verteilung statt nur Mittelwert.
+- **Ursachensignale:** DB-Pool-Wartezeit, aktive Verbindungen und Alter offener Outbox-Aufträge.
+- **Messregel:** nur passende gültige Absichten zählen; Labels mit hoher Kardinalität (z. B. einzelne Buchungs-IDs) vermeiden.
 
 ## p95 statt nur Durchschnitt
 
 ```text
-90 Buchungen:  0,1 s
-10 Buchungen:  5,0 s
-Durchschnitt:  0,59 s
-p95:           5,0 s
+90 Buchungen: 0,1 s
+10 Buchungen: 5,0 s
+
+Mittelwert: 0,59 s
+p95:        5,0 s
 ```
 
-- p95: mindestens 95 % der Messwerte liegen bei oder unter diesem Wert
-- Der Mittelwert versteckt die zehn stark betroffenen Anfragen
-- Perzentile immer mit Zeitraum, Traffic und Version lesen
-
-TODO: p95 einführen wo zuerst verwendet!
+- **p95** heißt: mindestens 95 % der Messungen sind höchstens so langsam wie dieser Wert.
+- Obwohl der Durchschnitt gut aussieht, sind hier 10 % der Nutzenden sehr langsam.
+- Immer mit Zeitraum, Stichprobengröße, Buchungs-SLI und Version betrachten.
 
 ## Logs: Kontext, nicht Datenmüll
 
 ```text
-level=warn event=booking.slow version=v2 trace_id=abc123 db_wait_ms=870
+level=warn event=booking.slow service=booking-api
+version=v2 trace_id=abc123 db_wait_ms=870
 ```
 
-- Strukturierte Felder statt unfilterbarem Freitext
-- Trace-ID durch API und Worker weiterreichen
-- Keine Secrets, Kalenderinhalte oder unnötigen Personendaten loggen
-- Mandantenbezug nur soweit nötig und zugriffsgeschützt
-
+- **Strukturierte Felder** statt schwer filterbarem Fließtext; Version und Trace-ID einheitlich setzen.
+- Logs beschreiben Ereignisse; eine einzelne Zeile beweist noch keinen Systemtrend.
+- Keine Secrets oder unnötigen Personendaten in Logs; Zugriff und Aufbewahrung begrenzen.
+- Trace-Kontext bei asynchronem Übergang zur Outbox/Worker-Kette explizit weitergeben.
 
 ## Trace: Wo geht die Zeit hin?
 
 ```text
-POST /bookings                 1.400 ms
-|-- authorize                    12 ms
-|-- wait for DB connection      870 ms
-`-- DB: Buchung + Outbox         110 ms
+POST /bookings                    1.400 ms (gesamt)
+|-- authorize                        12 ms
+|-- wait for DB connection          870 ms
+`-- DB: Buchung + Outbox           110 ms
 ```
 
-- Span = ein Schritt; Trace = verbundene Schritte eines Requests
-- Verdacht: Pool-Sättigung, nicht langsame Kalender-API
-- Trace-Sampling spart Kosten; seltene Fehler dürfen nicht unsichtbar werden
+- **Span:** ein Arbeitsschritt mit Start/Ende und Attributen; **Trace:** zusammengehörige Spans eines Ablaufs.
+- **Interpretation:** Der DB-Pool ist auffällig; die genannten Span-Zeiten müssen nicht zur Gesamtdauer aufsummieren.
+- Sampling senkt Telemetriekosten, kann aber seltene Fehler übersehen.
 
 ## Trace: Die Wartezeit wird sichtbar
 
 ![](media/06_trace_waterfall.pdf){height=82%}
+
+## OpenTelemetry (OTel): Signale transportieren
+
+- **OpenTelemetry (OTel):** offener, herstellerneutraler Standard und Werkzeugsatz für Instrumentierung, Sammlung und Export von Telemetrie.
+- **SDK / automatische Instrumentierung:** API- und DB-Spans, Metriken; Logs können korreliert werden.
+- **Trace Context:** verbindet asynchrone Teile nur, wenn der Kontext über Outbox und Worker weitergegeben wird.
+- **Collector:** empfängt, verarbeitet und exportiert Daten (häufig über OTLP).
+- **Abgrenzung:** OTel ist **kein** Dashboard, keine Alert-Regel und kein Storage-Backend.
+- Sampling, Kardinalität, Datenminimierung und Zugriffsrechte bewusst planen.
+
+## Möglicher Betriebsstack für Cal.diy
+
+**Ein mögliches Beispiel** (LGTM = Loki, Grafana, Tempo, Mimir; hier vereinfachte Prometheus-Variante):
+
+```text
+Cal.diy -- OTel / OTLP --> Collector
+                               |-- Metriken -> Prometheus --+
+                               |-- Traces --> Tempo -------+--> Grafana
+                               `-- Logs ----> Loki --------+
+```
+
+- **OTel** standardisiert Instrumentierung und Export; **LGTM / Prometheus** sind austauschbare Werkzeuge für Speicherung und Visualisierung.
+- Alternativen: Jaeger, andere Metrik-/Log-Backends oder Managed-Plattformen; Kompatibilität und Exportwege prüfen.
+- Selbstbetrieb: mehr Kontrolle und Aufwand; Managed: weniger Betrieb, dafür Gebühren und Datenresidenz klären.
+
+## OTel und Backend: was bleibt austauschbar?
+
+```text
+App-Instrumentierung (OTel SDK)
+            | OTLP
+            v
+      OTel Collector -----> Storage A -----> Dashboard A
+            |
+            +-------------> Storage B -----> Dashboard B
+```
+
+- **Stabiler Teil:** Semantik von Spans/Metriken/Logs und Export-Schnittstellen.
+- **Austauschbar:** Collector-Konfiguration, Speichersystem, Dashboards, Alerting.
+- **Nicht automatisch portabel:** alle Abfragen, Dashboards, Kosten und Backendspezifika.
+
+**Merksatz:** *OpenTelemetry ist die offene Telemetrie-Schnittstelle; LGTM ist nur eine mögliche Implementierung dahinter.*
+
+## Betriebs- und Nutzerperspektive: zwei Wege
+
+![](media/06_observability_wege.pdf){height=82%}
 
 ## Vom SLI zum handlungsfähigen Alert
 
@@ -477,7 +596,6 @@ POST /bookings                 1.400 ms
 - **Dashboard:** SLI und p95 nach Version; DB-Pool-Wartezeit
 - **Drill-down:** Trace-ID → langsamer DB-Span → Log zum Pool
 - **Aktion:** Canary pausieren; Pool-Limit und Worker-Verbindungen prüfen
-
 
 # Incident und Lernschleife
 
@@ -507,7 +625,6 @@ Erkennen → Koordinieren → Eingrenzen → Wiederherstellen → Lernen
 - **Maßnahme:** Pool-Limit + Lasttest + Canary-Gate für Pool-Wartezeit
 - **Nachweis:** Rollout erneut mit begrenztem Canary testen
 
-
 ## Wer trägt den Betrieb?
 
 - DevOps: Entwicklung und Betrieb teilen Verantwortung für den Nutzerfluss
@@ -529,7 +646,25 @@ Erkennen → Koordinieren → Eingrenzen → Wiederherstellen → Lernen
 - Beispiel: 20 Deployments, 2 Soforteingriffe → 10 % Change Fail Rate
 - Alle fünf gemeinsam pro Dienst über Zeit betrachten – kein Personen-Ranking
 
-TODO: Praktiken die für gutes Abschneiten nach DORA sorgen
+## DORA: welche Praktiken verbessern die Kennzahlen?
+
+| Praxis | Erwarteter Beitrag |
+| :-- | :-- |
+| Kleine Änderungen, kurzlebige Branches | kürzere Lead Time, einfacher Rückweg |
+| Schnelle, verlässliche CI-Tests | weniger Fehler, weniger Wartezeit |
+| Automatisierte reproduzierbare Deployments | höhere Frequenz, geringere manuelle Fehlerquote |
+| Kompatible DB-Migrationen + Canary / Flags | geringere Change Fail Rate und Auswirkung |
+| SLOs, gutes Alerting, Runbooks | schnellere Recovery nach Fehlschlägen |
+
+**Wichtig:** DORA ist ein Diagnoseinstrument; keine Kennzahl isoliert maximieren.
+
+## DORA: aus einer Messung eine Verbesserung ableiten
+
+- **Beobachtung:** Cal.diy liefert selten aus, weil jede Freigabe lange manuelle Tests braucht.
+- **Hypothese:** ein stabiler automatisierter Staging-Flow verkürzt die Change Lead Time.
+- **Änderung:** kritische Buchungstests automatisieren; kleine PRs und Canary-Gate beibehalten.
+- **Gegenprüfung:** Lead Time und Deployment Frequency **sowie** Change Fail Rate / Rework über mehrere Wochen verfolgen.
+- **Keine Rangliste:** Team- und Dienstkontext erklären Unterschiede; nicht individuelle Leistung bewerten.
 
 # Zusammenfassung
 
@@ -550,11 +685,17 @@ TODO: Praktiken die für gutes Abschneiten nach DORA sorgen
 
 ## Zum Nachlesen
 
-- Beyer et al.: [Site Reliability Engineering](https://sre.google/sre-book/table-of-contents/) – Release Engineering, Monitoring, Incidents
-- Google: [SRE Workbook](https://sre.google/workbook/table-of-contents/) – SLOs und Alerting
-- Humble, Farley: _Continuous Delivery_ – Deployment Pipeline und Datenmigrationen
-- Majors et al.: _Observability Engineering_ – Logs, Metriken und Traces
-- [OpenTelemetry](https://opentelemetry.io/docs/what-is-opentelemetry/) – Instrumentierung und Collector
-- [DORA Metrics](https://dora.dev/guides/dora-metrics/) – fünf Lieferkennzahlen
-- [Kubernetes Docs](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) und [Argo CD](https://argo-cd.readthedocs.io/en/stable/user-guide/ci_automation/) – Orchestrierung und GitOps
-- [AWS Lambda Docs](https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtime-environment.html) und [Pricing](https://aws.amazon.com/lambda/pricing/) – Kaltstarts und Kosten als FaaS-Beispiel
+- Beyer et al.: [Site Reliability Engineering](https://sre.google/sre-book/table-of-contents/) – Release Engineering, Monitoring und Incidents.
+- Google: [SRE Workbook](https://sre.google/workbook/table-of-contents/) – SLOs, Alerts und Fehlerbudgets.
+- Humble, Farley: *Continuous Delivery* – Deployment-Pipelines und Migrationen.
+- Majors et al.: *Observability Engineering* – Metriken, Logs und Traces.
+- [OpenTelemetry – Was es ist (und nicht ist)](https://opentelemetry.io/docs/what-is-opentelemetry/) – offene Instrumentierung.
+- [DORA – Delivery Metrics](https://dora.dev/guides/dora-metrics/) und [Continuous Delivery Capabilities](https://dora.dev/capabilities/continuous-delivery/) – Kennzahlen und Praktiken.
+
+## Dokumentation zu Deployment und Laufzeit
+
+- [Kubernetes: Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) und [Rolling Updates](https://kubernetes.io/docs/tasks/run-application/update-deployment-rolling/) – Orchestrierung.
+- [Argo CD: Core Concepts](https://argo-cd.readthedocs.io/en/stable/core_concepts/) – GitOps/Abgleich.
+- [Docker: Was ist ein Container?](https://docs.docker.com/get-started/docker-concepts/the-basics/what-is-a-container/) – Container und VM.
+- [AWS Lambda: Runtime Lifecycle](https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtime-environment.html) und [Cloudflare Workers: How Workers works](https://developers.cloudflare.com/workers/reference/how-workers-works/) – FaaS-Modelle.
+- [OpenFeature: Feature Flags](https://openfeature.dev/docs/reference/intro/) und [Google Cloud: Canary Deployment](https://docs.cloud.google.com/deploy/docs/deployment-strategies/canary) – sichere Freigaben.
